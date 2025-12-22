@@ -1,427 +1,133 @@
-name: 🏆 Weekly Contributor Showdown
+name: 🏆 Placement-Prep Contributor Leaderboard
 
 on:
   schedule:
-    - cron: "0 10 * * 0"  # Every Sunday 10 AM UTC
+    - cron: "0 10 * * 0"   # Every Sunday at 10:00 UTC
   workflow_dispatch:
-    inputs:
-      custom_week:
-        description: "Enter week number (leave empty for auto)"
-        required: false
-      highlight:
-        description: "Special shoutout"
-        required: false
-        default: ""
-
-env:
-  TOP_CONTRIBUTORS: 15
-  WEEK_DAYS: 7
-  EXCLUDE_USERS: "dependabot[bot],github-actions[bot],Shubham-cyber-prog"
-  BADGE_THRESHOLDS:
-    GOLD: 10
-    SILVER: 5
-    BRONZE: 3
 
 permissions:
   issues: write
   pull-requests: read
   contents: read
-  pages: write
 
 jobs:
-  generate-leaderboard:
-    runs-on: ubuntu-latest-8core
-    name: 🏆 Generate Weekly Leaderboard
-    outputs:
-      top_contributor: ${{ steps.leaderboard.outputs.top_contributor }}
-      total_contributions: ${{ steps.leaderboard.outputs.total_contributions }}
-    
-    steps:
-    - name: ⚙️ Initialize Environment
-      id: setup
-      run: |
-        # Calculate week number and dates
-        WEEK_START=$(date -d "last sunday -6 days" +"%b %d")
-        WEEK_END=$(date -d "last sunday" +"%b %d")
-        WEEK_NUM=$(date -d "last sunday" +"%U")
-        echo "week_range=$WEEK_START - $WEEK_END" >> $GITHUB_OUTPUT
-        echo "week_number=$WEEK_NUM" >> $GITHUB_OUTPUT
-        echo "timestamp=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_OUTPUT
-
-    - name: 🏆 Generate Leaderboard
-      id: leaderboard
-      uses: actions/github-script@v7
-      env:
-        WEEK_RANGE: ${{ steps.setup.outputs.week_range }}
-        WEEK_NUM: ${{ steps.setup.outputs.week_number }}
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const { owner, repo } = context.repo;
-          const DAYS = 7;
-          
-          console.log(`🎯 Generating pro leaderboard for ${owner}/${repo}`);
-          
-          // Color codes for console
-          const colors = {
-            gold: '\x1b[93m',
-            silver: '\x1b[37m',
-            bronze: '\x1b[33m',
-            green: '\x1b[92m',
-            cyan: '\x1b[96m',
-            reset: '\x1b[0m'
-          };
-
-          // Calculate date range
-          const endDate = new Date();
-          const startDate = new Date();
-          startDate.setDate(startDate.getDate() - DAYS);
-          
-          console.log(`📅 Period: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
-
-          const stats = {};
-          const excludeUsers = process.env.EXCLUDE_USERS.split(',');
-
-          const isValidUser = (user) => {
-            if (!user) return false;
-            if (excludeUsers.some(excluded => user.includes(excluded))) return false;
-            if (user === owner) return false;
-            return true;
-          };
-
-          // Enhanced scoring system
-          const addContribution = (user, type, data = {}) => {
-            if (!isValidUser(user)) return;
-            
-            if (!stats[user]) {
-              stats[user] = {
-                user: user,
-                prs: 0,
-                merged: 0,
-                issues: 0,
-                reviews: 0,
-                comments: 0,
-                reactions: 0,
-                score: 0,
-                firstContribution: new Date(),
-                lastContribution: new Date()
-              };
-            }
-            
-            stats[user][type]++;
-            
-            // Update dates
-            const contribDate = new Date(data.created_at || new Date());
-            if (contribDate < stats[user].firstContribution) {
-              stats[user].firstContribution = contribDate;
-            }
-            if (contribDate > stats[user].lastContribution) {
-              stats[user].lastContribution = contribDate;
-            }
-
-            // Calculate score with weights
-            const weights = {
-              prs: 5,
-              merged: 10,
-              issues: 3,
-              reviews: 4,
-              comments: 1,
-              reactions: 0.5
-            };
-            
-            stats[user].score += weights[type] || 1;
-          };
-
-          console.log("📊 Fetching contributions...");
-
-          // Fetch PRs with details
-          const prs = await github.paginate(
-            github.rest.pulls.list,
-            { owner, repo, state: "all", per_page: 100, sort: 'updated' }
-          );
-
-          console.log(`🔍 Processing ${prs.length} PRs...`);
-          
-          prs.forEach(pr => {
-            const prDate = new Date(pr.created_at);
-            if (prDate >= startDate) {
-              addContribution(pr.user.login, "prs", pr);
-              if (pr.merged_at) addContribution(pr.user.login, "merged", pr);
-              
-              // Fetch reviews for this PR
-              (async () => {
-                const reviews = await github.rest.pulls.listReviews({
-                  owner, repo, pull_number: pr.number
-                });
-                reviews.data.forEach(review => {
-                  if (review.user && new Date(review.submitted_at) >= startDate) {
-                    addContribution(review.user.login, "reviews", review);
-                  }
-                });
-              })().catch(console.error);
-            }
-          });
-
-          // Fetch Issues
-          const issues = await github.paginate(
-            github.rest.issues.listForRepo,
-            { owner, repo, state: "all", per_page: 100 }
-          );
-
-          console.log(`📝 Processing ${issues.length} issues...`);
-          
-          issues.forEach(issue => {
-            if (!issue.pull_request) {
-              const issueDate = new Date(issue.created_at);
-              if (issueDate >= startDate) {
-                addContribution(issue.user.login, "issues", issue);
-                
-                // Count comments
-                if (issue.comments > 0) {
-                  (async () => {
-                    const comments = await github.rest.issues.listComments({
-                      owner, repo, issue_number: issue.number
-                    });
-                    comments.data.forEach(comment => {
-                      if (new Date(comment.created_at) >= startDate) {
-                        addContribution(comment.user.login, "comments", comment);
-                      }
-                    });
-                  })().catch(console.error);
-                }
-              }
-            }
-          });
-
-          // Process to leaderboard
-          const leaderboard = Object.values(stats)
-            .map(user => ({
-              ...user,
-              total: user.prs + user.issues + user.merged,
-              avgScore: user.score / (user.prs + user.issues || 1)
-            }))
-            .sort((a, b) => b.score - a.score)
-            .slice(0, parseInt(process.env.TOP_CONTRIBUTORS));
-
-          if (leaderboard.length === 0) {
-            console.log("😔 No contributions this week");
-            return;
-          }
-
-          // Calculate badges
-          leaderboard.forEach((user, index) => {
-            if (user.total >= 10) user.badge = "🏅 Elite Contributor";
-            else if (user.total >= 5) user.badge = "⭐ Star Performer";
-            else if (user.total >= 3) user.badge = "🚀 Rising Star";
-            else user.badge = "🌱 New Contributor";
-            
-            // Emoji for rank
-            if (index === 0) user.rank = "👑";
-            else if (index === 1) user.rank = "🥈";
-            else if (index === 2) user.rank = "🥉";
-            else user.rank = `#${index + 1}`;
-          });
-
-          // Create leaderboard table with ASCII art
-          const header = `
-╔══════════════════════════════════════════════════════════════╗
-║                    🏆 WEEKLY LEADERBOARD 🏆                   ║
-║          Placement Prep Community • Week ${process.env.WEEK_NUM}          ║
-╚══════════════════════════════════════════════════════════════╝`.trim();
-
-          const rows = leaderboard.map(user => {
-            const barLength = Math.min(Math.floor(user.score / 2), 20);
-            const progressBar = '█'.repeat(barLength) + '░'.repeat(20 - barLength);
-            
-            return `│ ${user.rank.padEnd(4)} │ @${user.user.padEnd(15)} │ ${user.total.toString().padStart(3)} │ ${user.score.toFixed(1).padStart(5)} │ ${progressBar} │ ${user.badge.padEnd(20)} │`;
-          });
-
-          const table = `
-${header}
-┌──────┬──────────────────┬─────┬───────┬────────────────────┬──────────────────────┐
-│ Rank │ Contributor      │ Ttl │ Score │ Progress           │ Badge               │
-├──────┼──────────────────┼─────┼───────┼────────────────────┼──────────────────────┤
-${rows.join('\n')}
-└──────┴──────────────────┴─────┴───────┴────────────────────┴──────────────────────┘`.trim();
-
-          // Summary stats
-          const totalContributors = leaderboard.length;
-          const totalPRs = leaderboard.reduce((sum, u) => sum + u.prs, 0);
-          const totalMerged = leaderboard.reduce((sum, u) => sum + u.merged, 0);
-          const topContributor = leaderboard[0];
-
-          const summary = `
-📈 **Weekly Summary:**
-• 👥 **Contributors:** ${totalContributors}
-• 🔀 **PRs Created:** ${totalPRs}
-• ✅ **PRs Merged:** ${totalMerged}
-• 🎯 **Top Contributor:** @${topContributor.user} (Score: ${topContributor.score.toFixed(1)})
-
-🏅 **Badge Legend:**
-• 🏅 Elite Contributor: 10+ contributions
-• ⭐ Star Performer: 5-9 contributions  
-• 🚀 Rising Star: 3-4 contributions
-• 🌱 New Contributor: 1-2 contributions`.trim();
-
-          // Create fancy markdown with gradient effect
-          const body = `
-<div align="center">
-
-## 🚀 Placement Prep Weekly Leaderboard
-### Week ${process.env.WEEK_NUM} • ${process.env.WEEK_RANGE}
-
-\`\`\`
-${table}
-\`\`\`
-
----
-
-${summary}
-
-### 🎯 Performance Insights
-${leaderboard.slice(0, 3).map((u, i) => 
-  `**${['🥇 Gold', '🥈 Silver', '🥉 Bronze'][i]}:** @${u.user} - ${u.total} contributions with ${u.merged} merged PRs`
-).join('\n\n')}
-
-${leaderboard.length > 3 ? `
-**🏆 Other Top Performers:**
-${leaderboard.slice(3).map(u => `• @${u.user} - ${u.badge}`).join('\n')}
-` : ''}
-
----
-
-### 📊 Contribution Breakdown
-| Contributor | PRs | Merged | Issues | Comments | Score |
-|-------------|-----|--------|--------|----------|-------|
-${leaderboard.map(u => `| @${u.user} | ${u.prs} | ${u.merged} | ${u.issues} | ${u.comments} | ${u.score.toFixed(1)} |`).join('\n')}
-
----
-
-⭐ **Keep coding, keep contributing!**  
-💡 *Tip: Consistent small contributions > occasional large ones*
-
----
-*Generated on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}*
-*Update frequency: Weekly • Next update: Next Sunday*
-
-</div>`;
-
-          // Create or update issue
-          const existingIssues = await github.rest.issues.listForRepo({
-            owner,
-            repo,
-            labels: "weekly-leaderboard",
-            state: "open"
-          });
-
-          const issueTitle = `🏆 Weekly Leaderboard - Week ${process.env.WEEK_NUM} (${process.env.WEEK_RANGE})`;
-
-          if (existingIssues.data.length > 0) {
-            await github.rest.issues.update({
-              owner,
-              repo,
-              issue_number: existingIssues.data[0].number,
-              title: issueTitle,
-              body: body
-            });
-            console.log("🔄 Updated existing leaderboard");
-          } else {
-            await github.rest.issues.create({
-              owner,
-              repo,
-              title: issueTitle,
-              body: body,
-              labels: ["weekly-leaderboard", "achievements", "automated"]
-            });
-            console.log("✅ Created new leaderboard issue");
-          }
-
-          // Set outputs
-          core.setOutput('top_contributor', topContributor.user);
-          core.setOutput('total_contributions', leaderboard.length.toString());
-          
-          // Console output with colors
-          console.log(colors.green + "\n✨ LEADERBOARD GENERATED SUCCESSFULLY!" + colors.reset);
-          console.log(colors.cyan + "=========================================" + colors.reset);
-          console.log(colors.gold + `👑 TOP CONTRIBUTOR: @${topContributor.user}` + colors.reset);
-          console.log(colors.silver + `📊 TOTAL CONTRIBUTORS: ${leaderboard.length}` + colors.reset);
-          console.log(colors.bronze + `🏆 TOP 3: ${leaderboard.slice(0,3).map(u => `@${u.user}`).join(', ')}` + colors.reset);
-
-    - name: 📢 Create Summary Comment
-      if: steps.leaderboard.outputs.top_contributor
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const { owner, repo } = context.repo;
-          const topContributor = '${{ steps.leaderboard.outputs.top_contributor }}';
-          const weekNum = '${{ steps.setup.outputs.week_number }}';
-          
-          const comment = `
-          🎉 **Weekly Leaderboard Generated!**
-          
-          Check out the complete leaderboard here: #ISSUE_NUMBER
-          
-          **Shoutout to this week's top contributor:** @${topContributor} 👏
-          
-          Keep up the amazing work everyone! Your contributions help students ace their placements! 💪
-          `;
-          
-          // Find the issue we just created/updated
-          const issues = await github.rest.issues.listForRepo({
-            owner,
-            repo,
-            labels: "weekly-leaderboard",
-            state: "open",
-            sort: "updated",
-            direction: "desc"
-          });
-          
-          if (issues.data.length > 0) {
-            const issueNumber = issues.data[0].number;
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number: issueNumber,
-              body: comment.replace('#ISSUE_NUMBER', `#${issueNumber}`)
-            });
-          }
-
-    - name: 📈 Update README Badge
-      if: steps.leaderboard.outputs.top_contributor
-      run: |
-        echo "🛠️ Updating README with leaderboard badge..."
-        # This would update a badge in README
-        echo "Feature coming soon!"
-
-  announce:
-    needs: generate-leaderboard
+  leaderboard:
     runs-on: ubuntu-latest
-    name: 📢 Announce Results
-    if: always()
-    
-    steps:
-    - name: 📤 Post Summary
-      if: needs.generate-leaderboard.outputs.top_contributor
-      run: |
-        echo "🏆 Leaderboard Generation Complete!"
-        echo "Top Contributor: ${{ needs.generate-leaderboard.outputs.top_contributor }}"
-        echo "Total Contributors: ${{ needs.generate-leaderboard.outputs.total_contributions }}"
-        
-        # Here you could add Discord/Telegram webhook notifications
-        # curl -X POST -H "Content-Type: application/json" \
-        # -d '{"content":"Weekly leaderboard updated!"}' \
-        # ${{ secrets.DISCORD_WEBHOOK }}
 
-    - name: 🚨 Notify on Failure
-      if: failure()
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          await github.rest.issues.create({
-            ...context.repo,
-            title: "❌ Leaderboard Generation Failed",
-            body: "The weekly leaderboard generation failed. Please check the workflow run.",
-            labels: ["bug", "automation"]
-          });
+    steps:
+      - name: Generate Weekly Contributor Leaderboard
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const DAYS = 7;
+
+            console.log(`📊 Generating leaderboard for last ${DAYS} days`);
+
+            const since = new Date();
+            since.setDate(since.getDate() - DAYS);
+
+            const stats = {};
+
+            const isValidUser = (user) =>
+              user &&
+              !user.endsWith('[bot]') &&
+              user !== owner;
+
+            const add = (user, type) => {
+              if (!isValidUser(user)) return;
+              if (!stats[user]) {
+                stats[user] = { prs: 0, merged: 0, issues: 0 };
+              }
+              stats[user][type]++;
+            };
+
+            // Fetch PRs
+            const prs = await github.paginate(
+              github.rest.pulls.list,
+              { owner, repo, state: "all", per_page: 100 }
+            );
+
+            prs.forEach(pr => {
+              if (new Date(pr.created_at) >= since) {
+                add(pr.user.login, "prs");
+                if (pr.merged_at) add(pr.user.login, "merged");
+              }
+            });
+
+            // Fetch Issues
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              { owner, repo, state: "all", per_page: 100 }
+            );
+
+            issues.forEach(issue => {
+              if (!issue.pull_request && new Date(issue.created_at) >= since) {
+                add(issue.user.login, "issues");
+              }
+            });
+
+            const leaderboard = Object.entries(stats)
+              .map(([user, data]) => ({
+                user,
+                ...data,
+                total: data.prs + data.issues + data.merged
+              }))
+              .sort((a, b) => b.total - a.total)
+              .slice(0, 10);
+
+            if (leaderboard.length === 0) {
+              console.log("⚠️ No contributors found this week.");
+              return;
+            }
+
+            const medals = ["🥇", "🥈", "🥉"];
+
+            const rows = leaderboard.map((c, i) => {
+              const rank = medals[i] || `#${i + 1}`;
+              return `| ${rank} | @${c.user} | ${c.prs} | ${c.merged} | ${c.issues} | ${c.total} |`;
+            });
+
+            const body = `
+            ## 🏆 Placement-Prep Weekly Contributor Leaderboard
+            ⏱ **Last ${DAYS} Days**
+
+            | Rank | Contributor | PRs | Merged | Issues | Total |
+            |------|-------------|-----|--------|--------|-------|
+            ${rows.join("\n")}
+
+            🎉 **Amazing work everyone!**
+            Your contributions keep Placement-Prep alive 🚀
+
+            ---
+            🤖 _Auto-generated every week_
+            `;
+
+            // Check existing leaderboard issue
+            const existing = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              labels: "leaderboard",
+              state: "open"
+            });
+
+            if (existing.data.length > 0) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.data[0].number,
+                body
+              });
+              console.log("♻️ Updated existing leaderboard issue");
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: "🏆 Placement-Prep Weekly Contributor Leaderboard",
+                body,
+                labels: ["leaderboard", "automated"]
+              });
+              console.log("✅ Created new leaderboard issue");
+            }
