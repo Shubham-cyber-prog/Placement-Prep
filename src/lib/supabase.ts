@@ -1,9 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Lazy initialization to allow ErrorBoundary to catch configuration errors
+let supabaseInstance: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  // Validate environment variables
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const missingVars = [];
+    if (!supabaseUrl) missingVars.push('VITE_SUPABASE_URL');
+    if (!supabaseAnonKey) missingVars.push('VITE_SUPABASE_ANON_KEY');
+    
+    throw new Error(
+      `Missing required environment variables: ${missingVars.join(', ')}\n\n` +
+      `Please create a .env file in the project root with:\n` +
+      `VITE_SUPABASE_URL=your_supabase_url\n` +
+      `VITE_SUPABASE_ANON_KEY=your_supabase_anon_key\n\n` +
+      `Get these values from: https://supabase.com/dashboard -> Your Project -> Settings -> API`
+    );
+  }
+
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  return supabaseInstance;
+}
+
+// Create a Proxy to intercept all property access and call getSupabaseClient() lazily
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabaseClient();
+    const value = client[prop as keyof SupabaseClient];
+    return typeof value === 'function' ? value.bind(client) : value;
+  }
+});
 
 export type Profile = {
   id: string;
