@@ -38,8 +38,6 @@ This repository reflects my **consistent practice, learning roadmap, and real in
 - 🎯 **Objective:**  
   To maintain a **well-organized, revision-friendly, and interview-ready** collection of resources and solved problems for placements.
 
----
-
 ## 🚀 What This Repository Offers
 
 - ✅ Topic-wise **DSA implementations & problems**
@@ -249,6 +247,50 @@ A structured <b>12-week roadmap</b> covering <b>DSA, System Design, and Intervie
 * 📊 **Quantify achievements** (numbers > words)
 * 🎯 **Tailor resume** for each company/role
 * 📄 Keep it **1 page**, clean and ATS-friendly
+
+---
+
+## This project uses Supabase for authentication and database.
+
+## 🛠 Supabase Setup (for Contributors)
+
+### Step 1: Create Supabase Project
+1. Create an account at https://supabase.com
+2. Create a new project
+
+### Step 2: Get API Keys
+Go to:
+Project Settings (at bottom of left nav) →
+1. Data API -> Copy : Project URL
+2. API Keys -> Copy : Publishable key
+
+### Step 3: Environment Setup
+Create a `.env` file in the project root:
+
+VITE_SUPABASE_URL=your_project_url_here
+VITE_SUPABASE_ANON_KEY=your_publishable_key_here
+
+✅ Supabase client is already configured in the codebase (supabase-client.ts).
+Contributors only need to provide their own Supabase credentials via a .env file.
+
+⚠️ Note:
+This project requires specific Supabase tables to function.
+The database schema is currently not automated.
+Contributors may need to manually create tables based on the code usage.
+
+## Why Supabase Setup is Required
+
+This project relies on Supabase for authentication and database operations.
+Setting up Supabase locally allows contributors to:
+
+- Run the application end-to-end
+- Test authentication flows (login/signup)
+- Fetch and modify real data locally
+- Reproduce bugs and validate fixes
+- Develop and test new features confidently
+
+Supabase credentials are required only for local development.
+Contributors use their own Supabase project — no production data is accessed.
 
 ---
 
