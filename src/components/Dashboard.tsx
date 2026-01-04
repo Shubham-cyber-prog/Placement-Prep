@@ -25,6 +25,8 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const tipOfTheDay = "💡 Tip: Solve at least one medium DSA problem daily to improve problem-solving skills!";
+
   useEffect(() => {
     if (user) {
       loadProfile();
@@ -135,6 +137,10 @@ export default function Dashboard() {
           </aside>
 
           <main className="lg:col-span-9">
+            <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-blue-100 via-blue-50 to-white shadow-md border border-blue-200 animate-fade-in">
+              <h2 className="text-sm text-blue-600 font-semibold mb-1">Tip of the Day</h2>
+              <p className="text-gray-700 text-sm">{tipOfTheDay}</p>
+            </div>
             {activeTab === 'overview' && <Overview />}
             {activeTab === 'topics' && <Topics />}
             {activeTab === 'problems' && <Problems />}
