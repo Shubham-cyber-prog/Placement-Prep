@@ -14,8 +14,9 @@
 
 ## 🚀 Welcome Contributors!
 
-Welcome to **Placement Prep**, an open-source initiative under **Elite Coders Winter of Code (ECWoC) 2026** 🎉
-This repository is designed to help students prepare for **placements, internships, and competitive coding** through structured resources and real-world practice.
+Welcome to **Placement Prep**, an open-source initiative under **Elite Coders Winter of Code (ECWoC) 2026** 🎉.  
+
+This repository is designed to help students prepare for **placements, internships, and competitive coding** through **structured resources and practical exercises**.
 
 We’re excited to have you contribute and grow with us! 💙
 
