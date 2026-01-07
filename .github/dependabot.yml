@@ -1,6 +1,0 @@
-version: 2
-updates:
-  - package-ecosystem: ""   # e.g., npm, pip, maven, gradle, etc.
-    directory: "/"          # Jahaan package.json ya equivalent file hai
-    schedule:
-      interval: "weekly"    # Dependabot kitni frequency se update check kare
