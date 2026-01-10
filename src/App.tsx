@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import DashboardLayout from "./layouts/DashboardLayout";
 import Index from "./pages/Index";
+import Homepage from "./pages/Homepage";
 import DSA from "./pages/DSA";
 import ProblemDetail from "./pages/ProblemDetail";
 import Companies from "./pages/Companies";
@@ -22,8 +23,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Homepage />} />
           <Route element={<DashboardLayout />}>
-            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Index />} />
             <Route path="/dsa" element={<DSA />} />
             <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
             <Route path="/companies" element={<Companies />} />
