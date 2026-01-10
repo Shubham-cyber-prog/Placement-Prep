@@ -47,8 +47,8 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.24.12",
     "html2canvas": "^1.4.1",
-    "input-otp": "^1.4.2",
     "jspdf": "^4.0.0",
+    "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
@@ -85,12 +85,7 @@
   },
   "description": "A placement preparation web app built with React, Vite, TypeScript, and shadcn/ui",
   "main": "eslint.config.js",
-  "keywords": [
-    "react",
-    "vite",
-    "shadcn",
-    "placement"
-  ],
+  "keywords": ["react", "vite", "shadcn", "placement"],
   "author": "Subham Nayak",
   "license": "ISC"
 }
