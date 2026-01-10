@@ -9,7 +9,8 @@ import DSA from "./pages/DSA";
 import Companies from "./pages/Companies";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
-import ScrollToTop from "./components/ScrollToTop"
+import ScrollToTop from "./components/ScrollToTop";
+import ResumeBuilder from "./pages/ResumeBuilder";   // ✅ NEW IMPORT
 
 const queryClient = new QueryClient();
 
@@ -29,13 +30,18 @@ const App = () => (
             <Route path="/system-design" element={<ComingSoon />} />
             <Route path="/progress" element={<ComingSoon />} />
             <Route path="/materials" element={<ComingSoon />} />
-            <Route path="/resume" element={<ComingSoon />} />
+
+            {/* ✅ Resume Builder now functional */}
+            <Route path="/resume" element={<ResumeBuilder />} />
+
             <Route path="/tests" element={<ComingSoon />} />
             <Route path="/mentorship" element={<ComingSoon />} />
             <Route path="/settings" element={<ComingSoon />} />
           </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
+
         <ScrollToTop />
       </BrowserRouter>
     </TooltipProvider>
