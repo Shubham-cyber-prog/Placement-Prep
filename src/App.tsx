@@ -9,6 +9,7 @@ import DSA from "./pages/DSA";
 import Companies from "./pages/Companies";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
+import ScrollToTop from "./components/ScrollToTop"
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <ScrollToTop />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
