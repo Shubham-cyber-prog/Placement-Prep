@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import DashboardLayout from "./layouts/DashboardLayout";
 import Index from "./pages/Index";
 import Homepage from "./pages/Homepage";
+import Auth from "./pages/Auth";
 import DSA from "./pages/DSA";
 import ProblemDetail from "./pages/ProblemDetail";
 import Companies from "./pages/Companies";
@@ -24,6 +25,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Homepage />} />
+          <Route path="/auth" element={<Auth />} />
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Index />} />
             <Route path="/dsa" element={<DSA />} />
