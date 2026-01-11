@@ -3,7 +3,11 @@ import Topic from "../models/Topic.js";
 import { validateProblemInput } from "../utils/validators.js";
 
 export const getProblems = async (req, res) => {
-    const problems = await PracticeProblem.find({ user: req.user._id }).populate('topic');
+    const query = { user: req.user._id };
+    if (req.query.favorite === 'true') {
+        query.isFavorite = true;
+    }
+    const problems = await PracticeProblem.find(query).populate('topic');
     res.json(problems);
 };
 
@@ -25,4 +29,17 @@ export const createProblem = async (req, res) => {
     const payload = { ...req.body, topic, user: req.user._id };
     const problem = await PracticeProblem.create(payload);
     res.json(problem);
+};
+
+export const toggleFavorite = async (req, res) => {
+    try {
+        const problem = await PracticeProblem.findOne({ _id: req.params.id, user: req.user._id });
+        if (!problem) return res.status(404).json({ message: "Problem not found" });
+
+        problem.isFavorite = !problem.isFavorite;
+        await problem.save();
+        res.json(problem);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
