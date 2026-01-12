@@ -24,11 +24,11 @@
 
 
 ## 📂 Repository Overview
+### To maintain a **well-organized, revision-friendly, and interview-ready** collection of resources and solved problems for placements.
 
 - 🔗 **GitHub Profile:** [Shubham-cyber-prog](https://github.com/Shubham-cyber-prog)
 - 📁 **Repository Name:** `Placement-Prep`
-- 🎯 **Objective:**  
-  To maintain a **well-organized, revision-friendly, and interview-ready** collection of resources and solved problems for placements.
+
 
 ## 🚀 What This Repository Offers
 
@@ -150,10 +150,6 @@ A structured <b>12-week roadmap</b> covering <b>DSA, System Design, and Intervie
 ---
 # 📊 Daily Study Schedule
 
-```
-
----
-
 ## 🌅 Morning Session (2 Hours)
 
 **Focus:** Strengthening basics & fixing weak areas
@@ -166,8 +162,6 @@ A structured <b>12-week roadmap</b> covering <b>DSA, System Design, and Intervie
 
 * 🔁 **30 mins — Previous Mistakes Review**
   Analyze wrong solutions, optimize approaches, and note learnings.
-
----
 
 ## ☀️ Afternoon Session (2 Hours)
 
@@ -182,17 +176,12 @@ A structured <b>12-week roadmap</b> covering <b>DSA, System Design, and Intervie
 * 📊 **30 mins — Time & Space Complexity Analysis**
   Analyze performance, optimize code, and compare multiple approaches.
 
----
-
 ## 🌙 Evening Session (1 Hour)
 
 **Focus:** Interview preparation
 
 * 🎯 **60 mins — Mock Interview / Company‑Specific Questions**
   Practice behavioral + technical questions from product‑based companies.
-
----
-```
 
 📌 *Consistency beats intensity. Follow this schedule daily and iterate weekly for maximum growth.*
 
