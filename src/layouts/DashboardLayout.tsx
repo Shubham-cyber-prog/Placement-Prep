@@ -5,13 +5,30 @@ import AppSidebar from "@/components/AppSidebar";
 import PageLoader from "@/components/PageLoader";
 import { Bell, Search, User } from "lucide-react";
 
+// --- FIREBASE IMPORTS ---
+import { auth } from "../pages/firebase"; 
+import { onAuthStateChanged } from "firebase/auth";
+
 const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
+  // --- STATE FOR USERNAME ---
+  const [displayName, setDisplayName] = useState("Candidate");
 
   useEffect(() => {
-    // Simulate initial load
+    // 1. Listen for the authenticated user
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setDisplayName(user.displayName || user.email?.split('@')[0] || "Candidate");
+      }
+    });
+
+    // 2. Simulate initial load
     const timer = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(timer);
+    
+    return () => {
+      clearTimeout(timer);
+      unsubscribe(); // Cleanup Firebase listener
+    };
   }, []);
 
   return (
@@ -49,7 +66,8 @@ const DashboardLayout = () => {
                 {/* Profile */}
                 <div className="flex items-center gap-3">
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium text-foreground">John Doe</p>
+                    {/* FIXED: Replaced "John Doe" with dynamic {displayName} */}
+                    <p className="text-sm font-medium text-foreground">{displayName}</p>
                     <p className="text-xs text-muted-foreground">Premium User</p>
                   </div>
                   <button className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">

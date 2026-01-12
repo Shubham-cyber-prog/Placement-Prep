@@ -1,15 +1,19 @@
+import React, { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
+import { auth } from "./firebase"; 
+import { onAuthStateChanged } from "firebase/auth";
 import {
   Code2,
   Brain,
   Users,
-  Building2,
   TrendingUp,
   Target,
   CheckCircle,
   Clock,
   Lightbulb,
 } from "lucide-react";
+
+// --- YOUR CUSTOM COMPONENT IMPORTS ---
 import StatCard from "@/components/StatCard";
 import CategoryCard from "@/components/CategoryCard";
 import ProgressRing from "@/components/ProgressRing";
@@ -17,6 +21,7 @@ import RecentActivity from "@/components/RecentActivity";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import TopicProgress from "@/components/TopicProgress";
 
+// --- DATA STRUCTURES (UNTOUCHED) ---
 const categories = [
   {
     title: "DSA Practice",
@@ -61,6 +66,19 @@ const topicProgress = [
 ];
 
 const Index = () => {
+  // --- DYNAMIC AUTH STATE ---
+  const [displayName, setDisplayName] = useState("Candidate");
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Use displayName if set, otherwise extract from email, fallback to 'Candidate'
+        setDisplayName(user.displayName || user.email?.split('@')[0] || "Candidate");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -71,7 +89,7 @@ const Index = () => {
       >
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            Welcome back, <span className="gradient-text">John!</span>
+            Welcome back, <span className="gradient-text">{displayName}!</span>
           </h1>
           <p className="text-muted-foreground mt-1">
             Continue your preparation journey. You're doing great!
