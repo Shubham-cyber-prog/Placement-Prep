@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Search, Filter, BookOpen, CheckCircle, Clock, Star } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, Filter, CheckCircle, Clock, Star, XCircle, BookOpen } from "lucide-react";
 import Loader from "@/components/Loader";
 
+// Static Data (Unchanged)
 const topics = [
   { id: 1, name: "Arrays", count: 80, solved: 45 },
   { id: 2, name: "Strings", count: 50, solved: 30 },
@@ -21,7 +22,7 @@ const problems = [
   { id: 3, title: "Binary Tree Inorder", difficulty: "Medium", topic: "Trees", solved: false, starred: true },
   { id: 4, title: "Longest Substring", difficulty: "Medium", topic: "Strings", solved: false, starred: false },
   { id: 5, title: "Merge K Sorted Lists", difficulty: "Hard", topic: "Linked Lists", solved: false, starred: true },
-  { id: 6, title: "Coin Change", difficulty: "Medium", topic: "DP", solved: true, starred: false },
+  { id: 6, title: "Coin Change", difficulty: "Medium", topic: "Dynamic Programming", solved: true, starred: false },
 ];
 
 const difficultyColors = {
@@ -33,27 +34,43 @@ const difficultyColors = {
 const DSA = () => {
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading] = useState(false);
+
+  // Memoized filter logic
+  const filteredProblems = useMemo(() => {
+    return problems.filter((problem) => {
+      const matchesSearch = problem.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTopic = selectedTopic ? problem.topic === selectedTopic : true;
+      return matchesSearch && matchesTopic;
+    });
+  }, [searchTerm, selectedTopic]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">DSA Practice</h1>
-          <p className="text-muted-foreground">Master Data Structures & Algorithms</p>
+          <h1 className="text-2xl font-bold text-foreground italic uppercase tracking-tighter">DSA Practice</h1>
+          <p className="text-muted-foreground text-sm">Master Data Structures & Algorithms</p>
         </div>
+        
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <input
               type="text"
               placeholder="Search problems..."
-              className="pl-10 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 bg-muted/50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all w-full md:w-64"
             />
           </div>
-          <button className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-            <Filter className="w-5 h-5 text-muted-foreground" />
+          <button 
+            onClick={() => {setSearchTerm(""); setSelectedTopic(null);}}
+            className="p-2 rounded-xl glass hover:bg-muted transition-colors text-muted-foreground"
+          >
+            <Filter className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -63,77 +80,105 @@ const DSA = () => {
         {topics.map((topic, index) => (
           <motion.button
             key={topic.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.05 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.02 }}
             onClick={() => setSelectedTopic(selectedTopic === topic.name ? null : topic.name)}
-            className={`p-4 rounded-xl text-center transition-all ${
+            className={`p-4 rounded-xl text-center transition-all border ${
               selectedTopic === topic.name
-                ? "bg-primary text-primary-foreground"
-                : "glass hover:border-primary/50"
+                ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
+                : "glass border-transparent hover:border-primary/50"
             }`}
           >
-            <p className="font-semibold text-sm">{topic.name}</p>
-            <p className="text-xs opacity-70 mt-1">
-              {topic.solved}/{topic.count}
-            </p>
+            <p className="font-bold text-[11px] uppercase tracking-tight leading-none mb-1 truncate">{topic.name}</p>
+            <p className="text-[10px] font-black opacity-60">{topic.solved}/{topic.count}</p>
           </motion.button>
         ))}
       </div>
 
-      {/* Problems List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass rounded-2xl overflow-hidden"
-      >
-        <div className="p-4 border-b border-border/50">
-          <h3 className="font-semibold text-foreground">Problems</h3>
+      {/* Problems Container */}
+      <div className="glass rounded-2xl border border-white/5 overflow-hidden">
+        <div className="p-4 border-b border-border/50 bg-white/5 flex justify-between items-center">
+          <h3 className="font-bold text-xs uppercase tracking-widest text-foreground flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-primary" />
+            Problems Found ({filteredProblems.length})
+          </h3>
         </div>
         
-        <div className="divide-y divide-border/30">
-          {problems.map((problem, index) => (
-            <motion.div
-              key={problem.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + index * 0.05 }}
-              onClick={() => navigate(`/dsa/problem/${problem.id}`)}
-              className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-            >
-              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                {problem.solved ? (
-                  <CheckCircle className="w-4 h-4 text-success" />
-                ) : (
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                )}
-              </div>
-              
-              <div className="flex-1">
-                <p className="font-medium text-foreground">{problem.title}</p>
-                <p className="text-xs text-muted-foreground">{problem.topic}</p>
-              </div>
-              
-              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${difficultyColors[problem.difficulty as keyof typeof difficultyColors]}`}>
-                {problem.difficulty}
-              </span>
-              
-              <button className="p-1">
-                <Star
-                  className={`w-4 h-4 ${
-                    problem.starred ? "text-warning fill-warning" : "text-muted-foreground"
-                  }`}
-                />
-              </button>
-            </motion.div>
-          ))}
+        {/* Problems List with Stabilized Layout */}
+        <div className="flex flex-col">
+          <AnimatePresence initial={false} mode="popLayout">
+            {filteredProblems.map((problem) => (
+              <motion.div
+                key={problem.id}
+                layout // Smooths the position change of surrounding items
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => navigate(`/dsa/problem/${problem.id}`)}
+                className="flex items-center gap-4 p-4 border-b border-border/30 last:border-0 hover:bg-white/5 transition-all cursor-pointer group"
+              >
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-muted/50 flex items-center justify-center border border-white/5 group-hover:border-primary/30">
+                  {problem.solved ? (
+                    <CheckCircle className="w-5 h-5 text-success" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-muted-foreground opacity-50" />
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                    {problem.title}
+                  </p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                    {problem.topic}
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-current/20 ${difficultyColors[problem.difficulty as keyof typeof difficultyColors]}`}>
+                    {problem.difficulty}
+                  </span>
+                  
+                  <button className="p-1 transition-transform hover:scale-110">
+                    <Star
+                      className={`w-4 h-4 ${
+                        problem.starred ? "text-warning fill-warning" : "text-muted-foreground opacity-30"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {/* Empty State */}
+          <AnimatePresence>
+            {filteredProblems.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-20 text-center"
+              >
+                <XCircle className="w-12 h-12 text-muted-foreground opacity-20 mb-4" />
+                <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">No matching problems found</p>
+                <button 
+                  onClick={() => {setSearchTerm(""); setSelectedTopic(null);}}
+                  className="mt-4 text-[10px] font-black uppercase text-primary hover:underline"
+                >
+                  Clear all filters
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </motion.div>
+      </div>
 
       {/* Demo Loader */}
       {loading && (
         <div className="flex justify-center py-8">
-          <Loader text="Loading problems..." />
+          <Loader text="Accessing Archive..." />
         </div>
       )}
     </div>
