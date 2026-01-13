@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import DSA from "./pages/DSA";
 import ProblemDetail from "./pages/ProblemDetail";
 import Companies from "./pages/Companies";
+import StudyMaterial from "./pages/StudyMaterial"; 
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
@@ -29,13 +30,13 @@ const App = () => (
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Index />} />
             <Route path="/dsa" element={<DSA />} />
+            <Route path="/study-material" element={<StudyMaterial />} />
             <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
             <Route path="/companies" element={<Companies />} />
             <Route path="/aptitude" element={<ComingSoon />} />
             <Route path="/interview" element={<ComingSoon />} />
             <Route path="/system-design" element={<ComingSoon />} />
             <Route path="/progress" element={<ComingSoon />} />
-            <Route path="/materials" element={<ComingSoon />} />
 
             {/* ✅ Resume Builder now functional */}
             <Route path="/resume" element={<ResumeBuilder />} />
