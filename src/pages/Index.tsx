@@ -151,9 +151,7 @@ const Index = () => {
               Preparation Tracks
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {categories.map((category, index) => (
-                <CategoryCard key={category.title} {...category} delay={0.3 + index * 0.1} />
-              ))}
+              
             </div>
           </div>
 

@@ -18,11 +18,11 @@ const topics = [
 
 const problems = [
   { id: 1, title: "Two Sum", difficulty: "Easy", topic: "Arrays", solved: true, starred: true },
-  { id: 2, title: "Reverse Linked List", difficulty: "Easy", topic: "Linked Lists", solved: true, starred: false },
-  { id: 3, title: "Binary Tree Inorder", difficulty: "Medium", topic: "Trees", solved: false, starred: true },
-  { id: 4, title: "Longest Substring", difficulty: "Medium", topic: "Strings", solved: false, starred: false },
-  { id: 5, title: "Merge K Sorted Lists", difficulty: "Hard", topic: "Linked Lists", solved: false, starred: true },
-  { id: 6, title: "Coin Change", difficulty: "Medium", topic: "Dynamic Programming", solved: true, starred: false },
+  { id: 2, title: "Valid Parentheses", difficulty: "Easy", topic: "Linked Lists", solved: true, starred: false },
+  { id: 3, title: "Merge Sorted Lists", difficulty: "Medium", topic: "Trees", solved: false, starred: true },
+  { id: 4, title: "Best Time to Buy/Sell", difficulty: "Medium", topic: "Strings", solved: false, starred: false },
+  { id: 5, title: "Binary Tree Inorder", difficulty: "Hard", topic: "Linked Lists", solved: false, starred: true },
+  { id: 6, title: "Longest Substring", difficulty: "Medium", topic: "Dynamic Programming", solved: true, starred: false },
 ];
 
 const difficultyColors = {
