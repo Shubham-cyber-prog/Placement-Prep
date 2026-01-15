@@ -44,7 +44,7 @@ const menuItems = [
       { name: "Companies", icon: Building2, path: "/companies" },
       { name: "Study Materials", icon: BookOpen, path: "/study-material" },
       { name: "Resume Builder", icon: FileText, path: "/resume" },
-      { name: "Mock Tests", icon: Trophy, path: "/tests" },
+      { name: "Mock Tests", icon: Trophy, path: "/mock-test" },
     ],
   },
   {

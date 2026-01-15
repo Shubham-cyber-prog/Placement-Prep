@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import DashboardLayout from "./layouts/DashboardLayout";
 import Index from "./pages/Index";
 import DSA from "./pages/DSA";
+
+import MockTest from "./pages/MockTest";
+import ProblemDetail from "./pages/ProblemDetail";
+
 import Companies from "./pages/Companies";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
@@ -25,6 +29,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/dsa" element={<DSA />} />
             <Route path="/companies" element={<Companies />} />
+            <Route path="/mentorship" element={<Mentorship />} />
+            <Route path="/mock-test" element={<MockTest />} />
+
             <Route path="/aptitude" element={<ComingSoon />} />
             <Route path="/interview" element={<ComingSoon />} />
             <Route path="/system-design" element={<ComingSoon />} />
