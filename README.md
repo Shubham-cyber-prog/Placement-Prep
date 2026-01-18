@@ -73,7 +73,11 @@ Placement-Prep/
 │   ├── 04-Greedy-Algorithms/
 │   ├── 05-Divide-and-Conquer/
 │   └── 06-Sliding-Window/
-│
+│        ├──  Theory.md          ✅ (must) 
+│        ├── Easy/
+│        |     └── README.md     ✅ (problem list)
+|        └── Medium/
+|              └── README.md     ✅ (problem list)
 ├── 03-System-Design/
 │   ├── Low-Level-Design/
 │   │   ├── OOP-Principles.md
