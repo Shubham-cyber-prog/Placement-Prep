@@ -286,6 +286,19 @@ git push origin feature/your-feature
 </div>
 
 ---
+## 🏆 Hall of Fame
+
+Big thanks to all the awesome contributors who helped make this project better! 🙌  
+Your efforts help students prepare for placements with quality resources 🚀
+
+<p align="center">
+  <a href="https://github.com/Shubham-cyber-prog/Placement-Prep/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=Shubham-cyber-prog/Placement-Prep" />
+  </a>
+</p>
+
+> _Thank you to everyone who has contributed!_
+
 
 ## ⭐ Support
 
