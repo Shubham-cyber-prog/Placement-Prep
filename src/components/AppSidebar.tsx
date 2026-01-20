@@ -26,7 +26,7 @@ const menuItems = [
     title: "Main",
     items: [
       { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-      { name: "My Progress", icon: Target, path: "/progress" },
+      { name: "My Progress", icon: Target, path: "/my-progress" },
     ],
   },
   {

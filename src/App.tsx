@@ -11,6 +11,8 @@ import MockTest from "./pages/MockTest";
 import AptitudePage from "./pages/AptitudePage";
 import ProblemDetail from "./pages/ProblemDetail";
 
+import MyProgress from "./pages/MyProgress";
+
 import Companies from "./pages/Companies";
 
 import StudyMaterial from "./pages/StudyMaterial"; 
@@ -22,7 +24,6 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import ScrollToTop from "./components/ScrollToTop";
 import ResumeBuilder from "./pages/ResumeBuilder";   // ✅ NEW IMPORT
-import { i } from "node_modules/framer-motion/dist/types.d-a9pt5qxk";
 
 
 import Mentorship from "./pages/Mentorship";
@@ -46,10 +47,13 @@ const App = () => (
             <Route path="/system-design" element={<SystemDesign />} />
 
             <Route path="/companies" element={<Companies />} />
+            <Route path="/my-progress" element={<MyProgress />} />
             <Route path="/mentorship" element={<Mentorship />} />
             <Route path="/mock-test" element={<MockTest />} />
 
             <Route path="/aptitude-test" element={<AptitudePage />} />
+            <Route path="/interview" element={<ComingSoon />} />
+            <Route path="/settings" element={<Settings />} />
 
 
             <Route path="/aptitude" element={<ComingSoon />} />
