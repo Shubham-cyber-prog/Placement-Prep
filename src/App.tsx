@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Homepage from "./pages/Homepage";
 import Auth from "./pages/Auth";
 import DSA from "./pages/DSA";
+import InterviewPreparationPlatform from "./pages/InterviewPrep";
 import MockTest from "./pages/MockTest";
 import AptitudePage from "./pages/AptitudePage";
 import ProblemDetail from "./pages/ProblemDetail";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/my-progress" element={<MyProgress />} />
             <Route path="/mentorship" element={<Mentorship />} />
             <Route path="/mock-test" element={<MockTest />} />
+            <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
             <Route path="/aptitude-test" element={<AptitudePage />} />
             <Route path="/interview" element={<ComingSoon />} />
             <Route path="/settings" element={<Settings />} />
