@@ -79,6 +79,11 @@ const Settings = () => {
             Auth Layer: Firebase Active
           </p>
         </div>
+        <button 
+          onClick={handleLogout}
+          className="glass px-4 py-2 rounded-xl text-xs font-black text-red-500 hover:bg-red-500/10 smooth-transition hover:scale-105 flex items-center gap-2 uppercase tracking-widest border border-red-500/20"
+        >
+          <LogOut className="w-4 h-4" /> Terminate Session
         <button onClick={handleLogout} className="text-red-500 font-bold">
           <LogOut size={14} /> Logout
         </button>
@@ -91,6 +96,10 @@ const Settings = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] smooth-transition ${
+                activeTab === tab 
+                  ? "bg-cyan-500 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)] scale-105" 
+                  : "glass text-slate-400 hover:bg-white/5 hover:scale-102"
               className={`w-full px-4 py-3 uppercase text-xs font-black ${
                 activeTab === tab ? "bg-cyan-500 text-black" : "glass"
               }`}
@@ -105,6 +114,90 @@ const Settings = () => {
 
         {/* Content */}
         <div className="lg:col-span-3">
+          <motion.div 
+            key={activeTab}
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -20, scale: 0.95 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="glass rounded-[2.5rem] p-8 border-white/10 backdrop-blur-3xl min-h-[500px] flex flex-col justify-between smooth-transition"
+          >
+            <div className="space-y-8">
+              {activeTab === "profile" && (
+                <div className="space-y-6">
+                  {/* Avatar Section - Seeded by Email */}
+                  <div className="flex items-center gap-6">
+                    <div className="relative group">
+                        <div className="w-24 h-24 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center overflow-hidden">
+                            <img 
+                                src={`https://api.dicebear.com/7.x/bottts/svg?seed=${userData.email}`} 
+                                alt="Avatar" 
+                                className="w-20 h-20 opacity-80"
+                            />
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 p-2 bg-slate-950 border border-white/20 rounded-lg shadow-xl cursor-pointer hover:bg-cyan-500 group-hover:scale-110 smooth-transition">
+                           <Camera className="text-white w-4 h-4" />
+                        </div>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black uppercase text-white tracking-tighter italic">{userData.name}</h3>
+                      <p className="text-[10px] text-cyan-400 font-black tracking-[0.3em] uppercase opacity-70">Authenticated Profile</p>
+                    </div>
+                  </div>
+
+                  {/* Input Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Archive Email</label>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700" />
+                        <input 
+                          type="email" 
+                          disabled
+                          value={userData.email}
+                          className="w-full glass bg-slate-950/20 border-none ring-1 ring-white/5 rounded-xl py-3 pl-12 pr-4 text-xs font-bold text-slate-500 outline-none cursor-not-allowed italic smooth-transition" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Target Company</label>
+                      <div className="relative">
+                        <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700" />
+                        <input 
+                          type="text" 
+                          value={userData.company}
+                          onChange={(e) => setUserData({...userData, company: e.target.value})}
+                          className="w-full glass bg-slate-950/50 border-none ring-1 ring-white/10 rounded-xl py-3 pl-12 pr-4 text-xs font-bold outline-none focus:ring-2 focus:ring-cyan-500 smooth-transition" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Current Location</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700" />
+                        <input 
+                          type="text" 
+                          value={userData.location}
+                          onChange={(e) => setUserData({...userData, location: e.target.value})}
+                          className="w-full glass bg-slate-950/50 border-none ring-1 ring-white/10 rounded-xl py-3 pl-12 pr-4 text-xs font-bold outline-none focus:ring-2 focus:ring-cyan-500 smooth-transition" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Skill Matrix</label>
+                      <div className="relative">
+                        <Award className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700" />
+                        <input 
+                          type="text" 
+                          value={userData.skills}
+                          onChange={(e) => setUserData({...userData, skills: e.target.value})}
+                          className="w-full glass bg-slate-950/50 border-none ring-1 ring-white/10 rounded-xl py-3 pl-12 pr-4 text-xs font-bold outline-none focus:ring-2 focus:ring-cyan-500 transition-all" 
+                        />
+                      </div>
           <motion.div className="glass p-8 min-h-[500px] flex flex-col justify-between">
 
             {/* PROFILE TAB */}
