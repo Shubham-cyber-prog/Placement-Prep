@@ -44,10 +44,10 @@ const DashboardLayout = () => {
     <>
       <AnimatePresence>{loading && <PageLoader />}</AnimatePresence>
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background smooth-transition">
         <AppSidebar />
 
-        <div className="ml-64 min-h-screen transition-all duration-300">
+        <div className="ml-64 min-h-screen smooth-transition ease-out">
           <header className="sticky top-0 z-30 h-16 glass border-b border-border/50">
             <div className="flex items-center justify-between h-full px-6">
               <div className="flex-1 max-w-md">
