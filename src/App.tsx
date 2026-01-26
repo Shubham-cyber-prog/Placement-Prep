@@ -10,6 +10,7 @@ import ScrollToTop from "./components/ScrollToTop";
 
 import Index from "./pages/Index";
 import DSA from "./pages/DSA";
+import InterviewPreparationPlatform from "./pages/InterviewPrep";
 import MockTest from "./pages/MockTest";
 import AptitudePage from "./pages/AptitudePage";
 import ProblemDetail from "./pages/ProblemDetail";
@@ -41,25 +42,17 @@ const App = () => {
               <Route path="/" element={<Index />} />
               <Route path="/dsa" element={<DSA />} />
               <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
-
               <Route path="/study-material" element={<StudyMaterial />} />
               <Route path="/system-design" element={<SystemDesign />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/my-progress" element={<MyProgress />} />
               <Route path="/mentorship" element={<Mentorship />} />
               <Route path="/mock-test" element={<MockTest />} />
+              {/* ✅ Add your interview prep route */}
+              <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
               <Route path="/aptitude-test" element={<AptitudePage />} />
               <Route path="/resume" element={<ResumeBuilder />} />
-
-              {/* ✅ REAL SETTINGS PAGE */}
               <Route path="/settings" element={<Settings />} />
-
-              {/* Coming soon routes */}
-              <Route path="/interview" element={<ComingSoon />} />
-              <Route path="/aptitude" element={<ComingSoon />} />
-              <Route path="/progress" element={<ComingSoon />} />
-              <Route path="/materials" element={<ComingSoon />} />
-              <Route path="/tests" element={<ComingSoon />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
