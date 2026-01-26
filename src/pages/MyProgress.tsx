@@ -10,6 +10,7 @@ import {
   Users, Plus, Sparkles, Flame, Gauge, Lightbulb, TrendingDown,
   Timer, Rocket, AlertTriangle
 } from "lucide-react";
+import { RankingTab } from '../components/RankingTab';
 
 // --- STYLES ---
 const glassStyle = "bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl";
@@ -42,7 +43,7 @@ const skillData = [
 ];
 
 export default function MyProgress() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'insights'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'insights' | 'ranking'>('overview');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -80,7 +81,7 @@ export default function MyProgress() {
           </div>
 
           <div className={`flex p-1 rounded-2xl ${glassStyle}`}>
-            {['overview', 'history', 'insights'].map((tab) => (
+            {['overview', 'history', 'insights', 'ranking'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)} 
@@ -252,6 +253,12 @@ export default function MyProgress() {
                        </div>
                     </div>
                   </section>
+                </motion.div>
+              )}
+
+              {activeTab === 'ranking' && (
+                <motion.div key="rank" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <RankingTab />
                 </motion.div>
               )}
             </AnimatePresence>

@@ -43,3 +43,40 @@ export const me = async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Not authenticated" });
     res.json({ user: req.user });
 };
+
+// Firebase token verification and JWT generation
+export const firebaseAuth = async (req, res) => {
+    try {
+        const { firebaseUID, email, name } = req.body;
+
+        if (!firebaseUID || !email) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        // Find or create user with Firebase UID
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Create new user synced from Firebase
+            user = await User.create({
+                name: name || email.split('@')[0],
+                email,
+                password: `firebase_${firebaseUID}`, // Placeholder password
+                firebaseUID // Store Firebase UID for reference
+            });
+            await Profile.create({ user: user._id });
+        }
+
+        // Generate JWT token for backend API
+        const token = generateToken(user._id);
+
+        res.json({
+            user,
+            token,
+            message: "Successfully authenticated with Firebase"
+        });
+    } catch (error) {
+        console.error("Firebase Auth Error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
