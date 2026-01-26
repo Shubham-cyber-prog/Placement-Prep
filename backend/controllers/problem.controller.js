@@ -43,3 +43,31 @@ export const toggleFavorite = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const markAsSolved = async (req, res) => {
+    try {
+        const problem = await PracticeProblem.findOne({ _id: req.params.id, user: req.user._id });
+        if (!problem) return res.status(404).json({ message: "Problem not found" });
+
+        problem.solved = true;
+        problem.solvedDate = new Date();
+        await problem.save();
+        res.json(problem);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const markAsUnsolved = async (req, res) => {
+    try {
+        const problem = await PracticeProblem.findOne({ _id: req.params.id, user: req.user._id });
+        if (!problem) return res.status(404).json({ message: "Problem not found" });
+
+        problem.solved = false;
+        problem.solvedDate = null;
+        await problem.save();
+        res.json(problem);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

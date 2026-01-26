@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import topicRoutes from "./routes/topic.routes.js";
 import problemRoutes from "./routes/problem.routes.js";
+import rankingRoutes from "./routes/ranking.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -33,6 +34,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/topics", topicRoutes);
 app.use("/api/problems", problemRoutes);
+app.use("/api/rankings", rankingRoutes);
 
 // Error handler
 app.use(errorHandler);
