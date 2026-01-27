@@ -1,11 +1,16 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import { Toaster } from "./components/ui/toaster";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
+
 import DashboardLayout from "./layouts/DashboardLayout";
+import ScrollToTop from "./components/ScrollToTop";
+
 import Index from "./pages/Index";
 import DSA from "./pages/DSA";
+import InterviewPreparationPlatform from "./pages/InterviewPrep";
 import MockTest from "./pages/MockTest";
 import AptitudePage from "./pages/AptitudePage";
 import ProblemDetail from "./pages/ProblemDetail";
@@ -60,5 +65,51 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
+import StudyMaterial from "./pages/StudyMaterial";
+import SystemDesign from "./pages/SystemDesign";
+import Mentorship from "./pages/Mentorship";
+import ResumeBuilder from "./pages/ResumeBuilder";
+import Settings from "./pages/Settings";
+
+import ComingSoon from "./pages/ComingSoon";
+import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+
+        <BrowserRouter>
+          <ScrollToTop />
+
+          <Routes>
+            <Route element={<DashboardLayout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/dsa" element={<DSA />} />
+              <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
+              <Route path="/study-material" element={<StudyMaterial />} />
+              <Route path="/system-design" element={<SystemDesign />} />
+              <Route path="/companies" element={<Companies />} />
+              <Route path="/my-progress" element={<MyProgress />} />
+              <Route path="/mentorship" element={<Mentorship />} />
+              <Route path="/mock-test" element={<MockTest />} />
+              {/* ✅ Add your interview prep route */}
+              <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
+              <Route path="/aptitude-test" element={<AptitudePage />} />
+              <Route path="/resume" element={<ResumeBuilder />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

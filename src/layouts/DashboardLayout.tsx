@@ -1,44 +1,18 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom"; // Added useLocation and useNavigate
-import { motion, AnimatePresence } from "framer-motion";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import AppSidebar from "@/components/AppSidebar";
-import PageLoader from "@/components/PageLoader";
-import { Bell, Search, User } from "lucide-react";
-
-// --- FIREBASE IMPORTS ---
-import { auth } from "../pages/firebase"; 
-import { onAuthStateChanged } from "firebase/auth";
 
 const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState("Candidate");
-  
-  const navigate = useNavigate(); // Initialize navigate
-  const location = useLocation(); // Initialize location to track current path
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setDisplayName(user.displayName || user.email?.split('@')[0] || "Candidate");
-      }
-    });
-
-    const timer = setTimeout(() => setLoading(false), 1200);
-    
-    return () => {
-      clearTimeout(timer);
-      unsubscribe();
-    };
+    const t = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(t);
   }, []);
 
-  // --- TOGGLE FUNCTION ---
-  const handleProfileClick = () => {
-    if (location.pathname === "/settings") {
-      navigate(-1); // Go back to the previous page (Dashboard) if already in settings
-    } else {
-      navigate("/settings"); // Otherwise, go to settings
-    }
-  };
+  if (loading) return <div>Loading...</div>;
 
   return (
     <>
@@ -100,8 +74,12 @@ const DashboardLayout = () => {
             </motion.div>
           </main>
         </div>
+    <div className="min-h-screen bg-background flex">
+      <AppSidebar />
+      <div className="flex-1 p-6 ml-64 transition-all duration-300">
+        <Outlet />
       </div>
-    </>
+    </div>
   );
 };
 

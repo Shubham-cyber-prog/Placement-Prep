@@ -34,7 +34,7 @@ const menuItems = [
     items: [
       { name: "DSA Practice", icon: Code2, path: "/dsa" },
       { name: "Aptitude", icon: Brain, path: "/aptitude-test" },
-      { name: "Interview Prep", icon: Users, path: "/interview" },
+      { name: "Interview Prep", icon: Users, path: "/interview-prep" },
       { name: "System Design", icon: Lightbulb, path: "/system-design" },
     ],
   },
