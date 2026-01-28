@@ -1,56 +1,73 @@
 import User from "../models/User.js";
 import Profile from "../models/Profile.js";
 import { generateToken } from "../utils/generateToken.js";
-import { validateRegisterInput, validateLoginInput } from "../utils/validators.js";
 
-export const register = async (req, res) => {
-    const { fullName, name, email, password } = req.body;
-    const displayName = fullName || name;
+export const register = async (req, res, next) => {
+    try {
+        const { fullName, name, email, password } = req.body;
+        const displayName = fullName || name;
 
-    const { valid, errors } = validateRegisterInput(displayName, email, password);
-    if (!valid) return res.status(400).json({ message: errors.join(", ") });
+        const exists = await User.findOne({ email });
+        if (exists) {
+            const error = new Error("User already exists");
+            error.statusCode = 400;
+            return next(error);
+        }
 
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ message: "User exists" });
+        const user = await User.create({ name: displayName, email, password });
+        await Profile.create({ user: user._id });
 
-    const user = await User.create({ name: displayName, email, password });
-    await Profile.create({ user: user._id });
-
-    res.json({
-        user,
-        token: generateToken(user._id),
-    });
-};
-
-export const login = async (req, res) => {
-    const { email, password } = req.body;
-
-    const { valid, errors } = validateLoginInput(email, password);
-    if (!valid) return res.status(400).json({ message: errors.join(", ") });
-    const user = await User.findOne({ email });
-
-    if (!user || !(await user.comparePassword(password))) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        res.json({
+            user,
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        next(error);
     }
-
-    res.json({
-        user,
-        token: generateToken(user._id),
-    });
 };
 
-export const me = async (req, res) => {
-    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
-    res.json({ user: req.user });
+export const login = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user || !(await user.comparePassword(password))) {
+            const error = new Error("Invalid credentials");
+            error.statusCode = 401;
+            return next(error);
+        }
+
+        res.json({
+            user,
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const me = async (req, res, next) => {
+    try {
+        if (!req.user) {
+            const error = new Error("Not authenticated");
+            error.statusCode = 401;
+            return next(error);
+        }
+        res.json({ user: req.user });
+    } catch (error) {
+        next(error);
+    }
 };
 
 // Firebase token verification and JWT generation
-export const firebaseAuth = async (req, res) => {
+export const firebaseAuth = async (req, res, next) => {
     try {
         const { firebaseUID, email, name } = req.body;
 
         if (!firebaseUID || !email) {
-            return res.status(400).json({ message: "Missing required fields" });
+            const error = new Error("Missing required fields");
+            error.statusCode = 400;
+            return next(error);
         }
 
         // Find or create user with Firebase UID
@@ -77,6 +94,6 @@ export const firebaseAuth = async (req, res) => {
         });
     } catch (error) {
         console.error("Firebase Auth Error:", error);
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 };
