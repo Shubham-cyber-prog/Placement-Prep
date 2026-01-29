@@ -1,11 +1,20 @@
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Search, Bell, User } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
+import PageLoader from "@/components/PageLoader";
 
 const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const displayName = "User"; // Placeholder, should be from auth context
+  const handleProfileClick = () => {
+    navigate("/settings");
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 500);
@@ -46,13 +55,13 @@ const DashboardLayout = () => {
                     <p className="text-sm font-medium text-foreground">{displayName}</p>
                     <p className="text-xs text-muted-foreground">Premium User</p>
                   </div>
-                  
+
                   {/* UPDATED BUTTON: Added handleProfileClick and active state styling */}
-                  <button 
+                  <button
                     onClick={handleProfileClick}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                        location.pathname === "/settings" 
-                        ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.5)]" 
+                        location.pathname === "/settings"
+                        ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.5)]"
                         : "bg-primary/20 text-primary hover:bg-primary/30"
                     }`}
                   >
@@ -74,12 +83,8 @@ const DashboardLayout = () => {
             </motion.div>
           </main>
         </div>
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar />
-      <div className="flex-1 p-6 ml-64 transition-all duration-300">
-        <Outlet />
       </div>
-    </div>
+    </>
   );
 };
 
