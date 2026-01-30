@@ -1,53 +1,36 @@
 import { useState, useEffect } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom"; // Added useLocation and useNavigate
-import { motion, AnimatePresence } from "framer-motion";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Search, Bell, User } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
 import PageLoader from "@/components/PageLoader";
-import { Bell, Search, User } from "lucide-react";
-
-// --- FIREBASE IMPORTS ---
-import { auth } from "../pages/firebase"; 
-import { onAuthStateChanged } from "firebase/auth";
 
 const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState("Candidate");
-  
-  const navigate = useNavigate(); // Initialize navigate
-  const location = useLocation(); // Initialize location to track current path
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const displayName = "User"; // Placeholder, should be from auth context
+  const handleProfileClick = () => {
+    navigate("/settings");
+  };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setDisplayName(user.displayName || user.email?.split('@')[0] || "Candidate");
-      }
-    });
-
-    const timer = setTimeout(() => setLoading(false), 1200);
-    
-    return () => {
-      clearTimeout(timer);
-      unsubscribe();
-    };
+    const t = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(t);
   }, []);
 
-  // --- TOGGLE FUNCTION ---
-  const handleProfileClick = () => {
-    if (location.pathname === "/settings") {
-      navigate(-1); // Go back to the previous page (Dashboard) if already in settings
-    } else {
-      navigate("/settings"); // Otherwise, go to settings
-    }
-  };
+  if (loading) return <div>Loading...</div>;
 
   return (
     <>
       <AnimatePresence>{loading && <PageLoader />}</AnimatePresence>
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background smooth-transition">
         <AppSidebar />
 
-        <div className="ml-64 min-h-screen transition-all duration-300">
+        <div className="ml-64 min-h-screen smooth-transition ease-out">
           <header className="sticky top-0 z-30 h-16 glass border-b border-border/50">
             <div className="flex items-center justify-between h-full px-6">
               <div className="flex-1 max-w-md">
@@ -72,13 +55,13 @@ const DashboardLayout = () => {
                     <p className="text-sm font-medium text-foreground">{displayName}</p>
                     <p className="text-xs text-muted-foreground">Premium User</p>
                   </div>
-                  
+
                   {/* UPDATED BUTTON: Added handleProfileClick and active state styling */}
-                  <button 
+                  <button
                     onClick={handleProfileClick}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                        location.pathname === "/settings" 
-                        ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.5)]" 
+                        location.pathname === "/settings"
+                        ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.5)]"
                         : "bg-primary/20 text-primary hover:bg-primary/30"
                     }`}
                   >

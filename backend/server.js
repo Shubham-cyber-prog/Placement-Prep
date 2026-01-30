@@ -7,6 +7,11 @@ import mongoose from "mongoose";
 // Import routes
 import progressRoutes from "./routes/progressRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import profileRoutes from "./routes/profile.routes.js";
+import topicRoutes from "./routes/topic.routes.js";
+import problemRoutes from "./routes/problem.routes.js";
+import rankingRoutes from "./routes/ranking.routes.js";
+import errorHandler from "./middlewares/error.middleware.js";
 
 // Load environment variables
 dotenv.config();
@@ -27,7 +32,7 @@ app.use(cors({
 }));
 
 // Rate limiting middleware
-const rateLimit = new Map();
+const rateLimitMap = new Map();
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_REQUESTS = 100;
 
@@ -35,13 +40,13 @@ app.use((req, res, next) => {
   const ip = req.ip;
   const now = Date.now();
   
-  if (!rateLimit.has(ip)) {
-    rateLimit.set(ip, { count: 1, startTime: now });
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, { count: 1, startTime: now });
   } else {
-    const userData = rateLimit.get(ip);
+    const userData = rateLimitMap.get(ip);
     
     if (now - userData.startTime > WINDOW_MS) {
-      rateLimit.set(ip, { count: 1, startTime: now });
+      rateLimitMap.set(ip, { count: 1, startTime: now });
     } else {
       userData.count++;
       if (userData.count > MAX_REQUESTS) {
@@ -82,16 +87,33 @@ app.get("/", (req, res) => {
         updateSkill: "PUT /api/progress/skill",
         analytics: "GET /api/progress/analytics"
       },
+      profile: "GET /api/profile",
+      topics: "GET /api/topics",
+      problems: "GET /api/problems",
+      rankings: "GET /api/rankings",
       health: "GET /api/health"
     }
   });
 });
 
-// Public routes
+// Routes
 app.use("/api/auth", authRoutes);
-
-// Protected routes
+app.use("/api/profile", profileRoutes);
+app.use("/api/topics", topicRoutes);
+app.use("/api/problems", problemRoutes);
+app.use("/api/rankings", rankingRoutes);
 app.use("/api/progress", progressRoutes);
+
+// Mock tests endpoint
+app.get("/api/mock-tests", (req, res) => {
+  res.json({
+    success: true,
+    tests: [
+      { id: 1, name: "FAANG Mock Test", difficulty: "Hard" },
+      { id: 2, name: "DSA Basics", difficulty: "Medium" }
+    ]
+  });
+});
 
 // Database connection
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/placement-prep";
@@ -125,17 +147,6 @@ app.use("*", (req, res) => {
 });
 
 // Error handler
-app.use((err, req, res, next) => {
-  console.error('🔥 Error:', err.message);
-  
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
-  
-  res.status(statusCode).json({
-    success: false,
-    message: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
+app.use(errorHandler);
 
 export default app;

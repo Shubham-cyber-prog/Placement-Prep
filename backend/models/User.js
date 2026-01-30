@@ -17,6 +17,10 @@ const userSchema = new mongoose.Schema({
         type: String, 
         required: true 
     },
+    firebaseUID: { 
+        type: String, 
+        default: null 
+    }, // For Firebase auth sync
     progressStats: {
         totalTestsTaken: { type: Number, default: 0 },
         averageAccuracy: { type: Number, default: 0 },
@@ -61,6 +65,7 @@ userSchema.methods.toProfileJSON = function() {
         name: this.name,
         email: this.email,
         role: this.role,
+        firebaseUID: this.firebaseUID,
         progressStats: this.progressStats,
         createdAt: this.createdAt,
         updatedAt: this.updatedAt
