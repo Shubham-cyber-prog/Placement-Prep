@@ -1,15 +1,17 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import User from "../models/User.js";
+import { protect } from "../middleware/authMiddleware.js"; // Changed to protect
 
 const router = express.Router();
 
-// Register new user
+// Register user
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user already exists
+    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -18,17 +20,25 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Create new user
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user
     const user = await User.create({
       name,
       email,
-      password
+      password: hashedPassword
     });
 
-    // Generate JWT token
+    // Create token
     const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || "your-secret-key",
+      {
+        userId: user._id,
+        email: user.email,
+        name: user.name
+      },
+      process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production",
       { expiresIn: "30d" }
     );
 
@@ -36,12 +46,12 @@ router.post("/register", async (req, res) => {
       success: true,
       message: "User registered successfully",
       data: {
+        token,
         user: {
           id: user._id,
           name: user.name,
           email: user.email
-        },
-        token
+        }
       }
     });
   } catch (error) {
@@ -64,36 +74,40 @@ router.post("/login", async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid credentials"
       });
     }
 
     // Check password
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid credentials"
       });
     }
 
-    // Generate JWT token
+    // Create token
     const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || "your-secret-key",
+      {
+        userId: user._id,
+        email: user.email,
+        name: user.name
+      },
+      process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production",
       { expiresIn: "30d" }
     );
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Login successful",
       data: {
+        token,
         user: {
           id: user._id,
           name: user.name,
           email: user.email
-        },
-        token
+        }
       }
     });
   } catch (error) {
@@ -106,37 +120,41 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Demo login (for quick testing)
+// Demo login (for testing)
 router.post("/demo-login", async (req, res) => {
   try {
-    // Find or create demo user
-    let demoUser = await User.findOne({ email: "demo@placementprep.com" });
+    // Create or find demo user
+    let user = await User.findOne({ email: "demo@example.com" });
     
-    if (!demoUser) {
-      demoUser = await User.create({
+    if (!user) {
+      user = await User.create({
         name: "Demo User",
-        email: "demo@placementprep.com",
-        password: "demo123"
+        email: "demo@example.com",
+        password: await bcrypt.hash("demo123", 10)
       });
     }
 
-    // Generate JWT token
+    // Create token
     const token = jwt.sign(
-      { userId: demoUser._id },
-      process.env.JWT_SECRET || "your-secret-key",
+      {
+        userId: user._id,
+        email: user.email,
+        name: user.name
+      },
+      process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production",
       { expiresIn: "30d" }
     );
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Demo login successful",
       data: {
+        token,
         user: {
-          id: demoUser._id,
-          name: demoUser.name,
-          email: demoUser.email
-        },
-        token
+          id: user._id,
+          name: user.name,
+          email: user.email
+        }
       }
     });
   } catch (error) {
@@ -144,6 +162,32 @@ router.post("/demo-login", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error with demo login",
+      error: error.message
+    });
+  }
+});
+
+// Get current user
+router.get("/me", protect, async (req, res) => { // Changed to protect
+  try {
+    const user = await User.findById(req.user.userId).select("-password");
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error("Get user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user data",
       error: error.message
     });
   }
