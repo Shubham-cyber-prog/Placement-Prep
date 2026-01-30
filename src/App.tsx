@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import DashboardLayout from "./layouts/DashboardLayout";
 import Index from "./pages/Index";
 import Homepage from "./pages/Homepage";
-import Auth from "./pages/Auth";
+import Auth from "./components/Auth";
 import DSA from "./pages/DSA";
 import InterviewPreparationPlatform from "./pages/InterviewPrep";
 import MockTest from "./pages/MockTest";
