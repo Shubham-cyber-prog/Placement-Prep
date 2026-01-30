@@ -1,6 +1,13 @@
 import express from "express";
 import cors from "cors";
 import compression from "compression";
+import rateLimit from "express-rate-limit";
+import authRoutes from "./routes/auth.routes.js";
+import profileRoutes from "./routes/profile.routes.js";
+import topicRoutes from "./routes/topic.routes.js";
+import problemRoutes from "./routes/problem.routes.js";
+import rankingRoutes from "./routes/ranking.routes.js";
+import errorHandler from "./middlewares/error.middleware.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 
@@ -22,33 +29,19 @@ app.use(
   })
 );
 
-// Simple rate limiting
-const rateLimit = {};
-app.use((req, res, next) => {
-  const ip = req.ip;
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1000;
-  const maxRequests = 100;
-
-  if (!rateLimit[ip]) {
-    rateLimit[ip] = { count: 1, startTime: now };
-  } else {
-    if (now - rateLimit[ip].startTime > windowMs) {
-      rateLimit[ip] = { count: 1, startTime: now };
-    } else {
-      rateLimit[ip].count++;
-    }
-  }
-
-  if (rateLimit[ip].count > maxRequests) {
-    return res.status(429).json({
-      success: false,
-      message: "Too many requests, please try again later."
-    });
-  }
-
-  next();
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs for testing
+  message: {
+    success: false,
+    message: "Too many requests, please try again later."
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
+
+app.use(limiter);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -71,6 +64,12 @@ app.get("/api/questions", (req, res) => {
   });
 });
 
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/topics", topicRoutes);
+app.use("/api/problems", problemRoutes);
+app.use("/api/rankings", rankingRoutes);
 app.get("/api/mock-tests", (req, res) => {
   res.json({
     success: true,
@@ -114,17 +113,6 @@ app.use("*", (req, res) => {
 });
 
 // Error handler
-app.use((err, req, res, next) => {
-  console.error('🔥 Error:', err.message);
-  
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
-  
-  res.status(statusCode).json({
-    success: false,
-    message: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
+app.use(errorHandler);
 
 export default app;

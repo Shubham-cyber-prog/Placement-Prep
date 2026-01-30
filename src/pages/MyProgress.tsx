@@ -11,6 +11,7 @@ import {
   Timer, Rocket, AlertTriangle, Loader2, User, LogOut, X
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { RankingTab } from '../components/RankingTab';
 
 // API Service
 const API_BASE_URL = "http://localhost:5000/api";
@@ -412,7 +413,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export default function MyProgress() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'insights'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'insights' | 'ranking'>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
@@ -638,7 +639,7 @@ export default function MyProgress() {
               </button>
               
               <div className={`flex p-1 rounded-2xl ${glassStyle}`}>
-                {(['overview', 'history', 'insights'] as const).map((tab) => (
+                {(['overview', 'history', 'insights', 'ranking'] as const).map((tab) => (
                   <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -774,6 +775,35 @@ export default function MyProgress() {
                         </ul>
                       </div>
                     </div>
+
+                    {/* Career Readiness Projection */}
+                    <section className={`p-10 rounded-[3rem] ${glassStyle} relative overflow-hidden bg-gradient-to-br from-[#00d4aa]/5 to-blue-500/5`}>
+                      <Rocket className="absolute -bottom-6 -right-6 w-32 h-32 opacity-10 -rotate-12" />
+                      <h3 className="text-xs font-black uppercase tracking-widest mb-8">Career Path Projection</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="text-center space-y-2">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Product Companies</p>
+                          <p className="text-2xl font-black text-[#00d4aa]">{insights.careerProjection.productCompanies.matchPercentage}% Match</p>
+                          <p className="text-[10px] text-gray-500">Level {insights.careerProjection.productCompanies.readinessLevel}/5</p>
+                        </div>
+                        <div className="text-center space-y-2 border-x border-white/10">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Early Startups</p>
+                          <p className="text-2xl font-black text-blue-400">{insights.careerProjection.earlyStartups.matchPercentage}% Match</p>
+                          <p className="text-[10px] text-gray-500">Level {insights.careerProjection.earlyStartups.readinessLevel}/5</p>
+                        </div>
+                        <div className="text-center space-y-2">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Quant Trading</p>
+                          <p className="text-2xl font-black text-purple-400">{insights.careerProjection.quantTrading.matchPercentage}% Match</p>
+                          <p className="text-[10px] text-gray-500">Level {insights.careerProjection.quantTrading.readinessLevel}/5</p>
+                        </div>
+                      </div>
+                    </section>
+                  </motion.div>
+                )}
+
+                {activeTab === 'ranking' && (
+                  <motion.div key="rank" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                    <RankingTab />
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -21,7 +21,8 @@ import {
   Cpu,
   Palette,
   Monitor,
-  Rocket
+  Rocket,
+  Trophy
 } from "lucide-react";
 
 // --- YOUR CUSTOM COMPONENT IMPORTS ---
@@ -230,7 +231,7 @@ const Index = () => {
       </div>
 
       {/* WOW FEATURE: Interactive Bottom Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
           {/* Card 1: Study Material (Mapped to /study-material) */}
           <motion.div 
             whileHover={{ y: -5 }}
@@ -281,6 +282,24 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground leading-relaxed mb-6">Convert your progress into a high-converting developer resume.</p>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase text-[#ec4899] tracking-widest group-hover:gap-3 transition-all">
                   Generate PDF <ExternalLink className="w-3 h-3" />
+                </div>
+            </div>
+          </motion.div>
+
+          {/* Card 4: Progress Tracker */}
+          <motion.div 
+            whileHover={{ y: -5 }}
+            onClick={() => navigate("/progress")}
+            className="p-8 rounded-3xl bg-[#00b4d8]/10 border border-[#00b4d8]/20 flex flex-col justify-between group cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#00b4d8]/20 flex items-center justify-center mb-6 text-[#00b4d8]">
+              <Trophy className="w-6 h-6" />
+            </div>
+            <div>
+                <h4 className="font-black text-xl mb-2 italic">My Progress</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-6">Track achievements, earn badges, and level up your coding skills.</p>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-[#00b4d8] tracking-widest group-hover:gap-3 transition-all">
+                  View Dashboard <ExternalLink className="w-3 h-3" />
                 </div>
             </div>
           </motion.div>
