@@ -7,8 +7,6 @@ import mongoose from "mongoose";
 // Import routes
 import progressRoutes from "./routes/progressRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import homepageRoutes from "./routes/homepageRoutes.js";
-import dashboardRoutes from "./routes/dashboardRoutes.js"; // NEW IMPORT
 
 // Load environment variables
 dotenv.config();
@@ -76,29 +74,13 @@ app.get("/", (req, res) => {
       auth: {
         register: "POST /api/auth/register",
         login: "POST /api/auth/login",
-        demoLogin: "POST /api/auth/demo-login",
-        me: "GET /api/auth/me"
+        demoLogin: "POST /api/auth/demo-login"
       },
       progress: {
         getProgress: "GET /api/progress",
         recordTest: "POST /api/progress/test",
         updateSkill: "PUT /api/progress/skill",
         analytics: "GET /api/progress/analytics"
-      },
-      dashboard: { // NEW ENDPOINTS
-        getDashboard: "GET /api/dashboard",
-        recordActivity: "POST /api/dashboard/activity",
-        platformStats: "GET /api/dashboard/platform-stats",
-        preferences: "PUT /api/dashboard/preferences"
-      },
-      homepage: {
-        stats: "GET /api/homepage/stats",
-        leaderboard: "GET /api/homepage/leaderboard",
-        mentorship: {
-          requests: "GET /api/homepage/mentorship/requests",
-          request: "POST /api/homepage/mentorship/request",
-          mentors: "GET /api/homepage/mentorship/mentors"
-        }
       },
       health: "GET /api/health"
     }
@@ -110,8 +92,6 @@ app.use("/api/auth", authRoutes);
 
 // Protected routes
 app.use("/api/progress", progressRoutes);
-app.use("/api/homepage", homepageRoutes);
-app.use("/api/dashboard", dashboardRoutes); // NEW ROUTE
 
 // Database connection
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/placement-prep";
@@ -119,9 +99,6 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/placem
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    
-    // Create initial leaderboard if not exists
-    initializeLeaderboard();
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err.message);
@@ -135,42 +112,9 @@ app.listen(PORT, () => {
   console.log(`🩺 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`📊 Progress API: http://localhost:${PORT}/api/progress`);
-  console.log(`📈 Dashboard API: http://localhost:${PORT}/api/dashboard`); // NEW LOG
-  console.log(`🏠 Homepage API: http://localhost:${PORT}/api/homepage`);
   console.log(`👤 Demo login: POST http://localhost:${PORT}/api/auth/demo-login`);
   console.log(`📱 Frontend: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
-  console.log(`\n🎮 Quick Start:`);
-  console.log(`1. Run demo login: POST http://localhost:${PORT}/api/auth/demo-login`);
-  console.log(`2. Use the token to access: GET http://localhost:${PORT}/api/progress`);
-  console.log(`3. Record test: POST http://localhost:${PORT}/api/progress/test`);
-  console.log(`4. Get dashboard: GET http://localhost:${PORT}/api/dashboard`);
 });
-
-// Helper function to initialize leaderboard
-async function initializeLeaderboard() {
-  try {
-    const Leaderboard = mongoose.model('Leaderboard');
-    const existing = await Leaderboard.findOne({ period: 'weekly', isActive: true });
-    
-    if (!existing) {
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 7);
-      
-      await Leaderboard.create({
-        period: 'weekly',
-        startDate,
-        endDate,
-        isActive: true,
-        rankings: [],
-        totalParticipants: 0
-      });
-      console.log('✅ Weekly leaderboard initialized');
-    }
-  } catch (error) {
-    console.error('Error initializing leaderboard:', error);
-  }
-}
 
 // 404 handler
 app.use("*", (req, res) => {

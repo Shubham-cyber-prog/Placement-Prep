@@ -17,7 +17,6 @@ const userSchema = new mongoose.Schema({
         type: String, 
         required: true 
     },
-    // Add these fields for progress tracking
     progressStats: {
         totalTestsTaken: { type: Number, default: 0 },
         averageAccuracy: { type: Number, default: 0 },

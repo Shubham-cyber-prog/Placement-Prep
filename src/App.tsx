@@ -21,8 +21,7 @@ import Mentorship from "./pages/Mentorship";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import ScrollToTop from "./components/ScrollToTop";
-import ResumeBuilder from "./pages/ResumeBuilder";   // ✅ NEW IMPORT
-import { i } from "node_modules/framer-motion/dist/types.d-a9pt5qxk";
+import ResumeBuilder from "./pages/ResumeBuilder";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +31,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/auth" element={<Auth />} />
@@ -49,19 +49,11 @@ const App = () => (
             <Route path="/aptitude-test" element={<AptitudePage />} />
             <Route path="/interview" element={<ComingSoon />} />
             <Route path="/settings" element={<Settings />} />
-
-            {/* ✅ Resume Builder now functional */}
             <Route path="/resume" element={<ResumeBuilder />} />
-
             <Route path="/tests" element={<ComingSoon />} />
-            
-            
           </Route>
-
           <Route path="*" element={<NotFound />} />
         </Routes>
-
-        <ScrollToTop />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
