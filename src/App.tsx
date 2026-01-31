@@ -1,13 +1,9 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as Sonner } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
-
 import DashboardLayout from "./layouts/DashboardLayout";
-import ScrollToTop from "./components/ScrollToTop";
-
 import Index from "./pages/Index";
 import Homepage from "./pages/Homepage";
 import Auth from "./components/Auth";
@@ -18,16 +14,17 @@ import AptitudePage from "./pages/AptitudePage";
 import ProblemDetail from "./pages/ProblemDetail";
 import MyProgress from "./pages/MyProgress";
 import Companies from "./pages/Companies";
-import StudyMaterial from "./pages/StudyMaterial";
+import StudyMaterial from "./pages/StudyMaterial"; 
 import SystemDesign from "./pages/SystemDesign";
 import ComingSoon from "./pages/ComingSoon";
+import Mentorship from "./pages/Mentorship";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
+import ScrollToTop from "./components/ScrollToTop";
 import ResumeBuilder from "./pages/ResumeBuilder";
-import Mentorship from "./pages/Mentorship";
-import Progress from "./pages/Progress";
 
 const queryClient = new QueryClient();
+
 
 const App = () => {
   return (
