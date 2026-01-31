@@ -6,7 +6,7 @@ import {
   Save, CheckCircle2, LogOut, ShieldCheck,
   MapPin, Briefcase, Award
 } from "lucide-react";
-import { auth } from "./firebase";
+import { auth } from "../firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { applyTheme } from "../lib/theme";
