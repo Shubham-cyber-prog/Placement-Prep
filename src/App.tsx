@@ -25,38 +25,45 @@ import ResumeBuilder from "./pages/ResumeBuilder";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<Homepage />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<Index />} />
-            <Route path="/dsa" element={<DSA />} />
-            <Route path="/study-material" element={<StudyMaterial />} />
-            <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
-            <Route path="/system-design" element={<SystemDesign />} />
-            <Route path="/companies" element={<Companies />} />
-            <Route path="/my-progress" element={<MyProgress />} />
-            <Route path="/mentorship" element={<Mentorship />} />
-            <Route path="/mock-test" element={<MockTest />} />
-            <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
-            <Route path="/aptitude-test" element={<AptitudePage />} />
-            <Route path="/interview" element={<ComingSoon />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/resume" element={<ResumeBuilder />} />
-            <Route path="/tests" element={<ComingSoon />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ScrollToTop />
+          <Routes>
+            <Route element={<DashboardLayout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/home" element={<Homepage />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dsa" element={<DSA />} />
+              <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
+              <Route path="/study-material" element={<StudyMaterial />} />
+              <Route path="/system-design" element={<SystemDesign />} />
+              <Route path="/companies" element={<Companies />} />
+              <Route path="/my-progress" element={<MyProgress />} />
+              <Route path="/mentorship" element={<Mentorship />} />
+              <Route path="/mock-test" element={<MockTest />} />
+              <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
+              <Route path="/aptitude-test" element={<AptitudePage />} />
+              <Route path="/resume" element={<ResumeBuilder />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/progress" element={<Progress />} />
+              {/* Coming Soon Pages */}
+              <Route path="/aptitude" element={<ComingSoon />} />
+              <Route path="/interview" element={<ComingSoon />} />
+              <Route path="/materials" element={<ComingSoon />} />
+              <Route path="/tests" element={<ComingSoon />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
