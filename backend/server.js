@@ -3,18 +3,20 @@ import cors from "cors";
 import compression from "compression";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 // Import routes
 import progressRoutes from "./routes/progressRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import profileRoutes from "./routes/profile.routes.js";
-import topicRoutes from "./routes/topic.routes.js";
-import problemRoutes from "./routes/problem.routes.js";
-import rankingRoutes from "./routes/ranking.routes.js";
-import errorHandler from "./middlewares/error.middleware.js";
+import homepageRoutes from "./routes/homepageRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 
 // Load environment variables
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 
@@ -23,7 +25,7 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// CORS
+// CORS Configuration
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:8080', 'http://localhost:3000'],
   credentials: true,
@@ -32,21 +34,21 @@ app.use(cors({
 }));
 
 // Rate limiting middleware
-const rateLimitMap = new Map();
+const rateLimit = new Map();
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_REQUESTS = 100;
 
 app.use((req, res, next) => {
-  const ip = req.ip;
+  const ip = req.ip || req.connection.remoteAddress;
   const now = Date.now();
   
-  if (!rateLimitMap.has(ip)) {
-    rateLimitMap.set(ip, { count: 1, startTime: now });
+  if (!rateLimit.has(ip)) {
+    rateLimit.set(ip, { count: 1, startTime: now });
   } else {
-    const userData = rateLimitMap.get(ip);
+    const userData = rateLimit.get(ip);
     
     if (now - userData.startTime > WINDOW_MS) {
-      rateLimitMap.set(ip, { count: 1, startTime: now });
+      rateLimit.set(ip, { count: 1, startTime: now });
     } else {
       userData.count++;
       if (userData.count > MAX_REQUESTS) {
@@ -79,7 +81,8 @@ app.get("/", (req, res) => {
       auth: {
         register: "POST /api/auth/register",
         login: "POST /api/auth/login",
-        demoLogin: "POST /api/auth/demo-login"
+        demoLogin: "POST /api/auth/demo-login",
+        me: "GET /api/auth/me"
       },
       progress: {
         getProgress: "GET /api/progress",
@@ -87,33 +90,31 @@ app.get("/", (req, res) => {
         updateSkill: "PUT /api/progress/skill",
         analytics: "GET /api/progress/analytics"
       },
-      profile: "GET /api/profile",
-      topics: "GET /api/topics",
-      problems: "GET /api/problems",
-      rankings: "GET /api/rankings",
+      dashboard: {
+        getDashboard: "GET /api/dashboard",
+        recordActivity: "POST /api/dashboard/activity",
+        platformStats: "GET /api/dashboard/platform-stats",
+        preferences: "PUT /api/dashboard/preferences"
+      },
+      homepage: {
+        stats: "GET /api/homepage/stats",
+        leaderboard: "GET /api/homepage/leaderboard",
+        mentorship: {
+          requests: "GET /api/homepage/mentorship/requests",
+          request: "POST /api/homepage/mentorship/request",
+          mentors: "GET /api/homepage/mentorship/mentors"
+        }
+      },
       health: "GET /api/health"
     }
   });
 });
 
-// Routes
+// API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/profile", profileRoutes);
-app.use("/api/topics", topicRoutes);
-app.use("/api/problems", problemRoutes);
-app.use("/api/rankings", rankingRoutes);
 app.use("/api/progress", progressRoutes);
-
-// Mock tests endpoint
-app.get("/api/mock-tests", (req, res) => {
-  res.json({
-    success: true,
-    tests: [
-      { id: 1, name: "FAANG Mock Test", difficulty: "Hard" },
-      { id: 2, name: "DSA Basics", difficulty: "Medium" }
-    ]
-  });
-});
+app.use("/api/homepage", homepageRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // Database connection
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/placement-prep";
@@ -134,6 +135,8 @@ app.listen(PORT, () => {
   console.log(`🩺 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`📊 Progress API: http://localhost:${PORT}/api/progress`);
+  console.log(`📈 Dashboard API: http://localhost:${PORT}/api/dashboard`);
+  console.log(`🏠 Homepage API: http://localhost:${PORT}/api/homepage`);
   console.log(`👤 Demo login: POST http://localhost:${PORT}/api/auth/demo-login`);
   console.log(`📱 Frontend: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
 });
@@ -147,6 +150,17 @@ app.use("*", (req, res) => {
 });
 
 // Error handler
-app.use(errorHandler);
+app.use((err, req, res, next) => {
+  console.error('🔥 Error:', err.message);
+  
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  res.status(statusCode).json({
+    success: false,
+    message: message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
 
 export default app;
