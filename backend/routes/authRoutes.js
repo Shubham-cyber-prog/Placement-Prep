@@ -1,75 +1,71 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 import User from "../models/User.js";
-import { protect } from "../middleware/authMiddleware.js"; // Changed to protect
 
 const router = express.Router();
 
-// Register user
-router.post("/register", async (req, res) => {
+// Firebase authentication endpoint
+router.post("/firebase", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { firebaseUID, email, name } = req.body;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    if (!firebaseUID || !email) {
       return res.status(400).json({
         success: false,
-        message: "User already exists"
+        message: "Firebase UID and email are required"
       });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Find or create user
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create new user from Firebase
+      user = new User({
+        name: name || email.split('@')[0],
+        email,
+        isOAuth: true,
+        oauthProvider: 'google',
+        oauthId: firebaseUID,
+        isEmailVerified: true,
+        password: 'oauth-user-' + firebaseUID // Placeholder
+      });
+      await user.save();
+    }
 
-    // Create user
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword
-    });
-
-    // Create token
+    // Create JWT token
     const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        name: user.name
-      },
-      process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production",
-      { expiresIn: "30d" }
+      { userId: user._id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
     );
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "User registered successfully",
       data: {
         token,
         user: {
           id: user._id,
           name: user.name,
-          email: user.email
+          email: user.email,
+          avatarUrl: user.avatarUrl
         }
       }
     });
   } catch (error) {
-    console.error("Registration error:", error);
+    console.error('Firebase auth error:', error);
     res.status(500).json({
       success: false,
-      message: "Error registering user",
-      error: error.message
+      message: "Error processing Firebase authentication"
     });
   }
 });
 
-// Login user
+// Regular login endpoint
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
@@ -78,8 +74,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
@@ -87,67 +82,56 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Create token
     const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        name: user.name
-      },
-      process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production",
-      { expiresIn: "30d" }
+      { userId: user._id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
     );
 
     res.status(200).json({
       success: true,
-      message: "Login successful",
       data: {
         token,
         user: {
           id: user._id,
           name: user.name,
-          email: user.email
+          email: user.email,
+          avatarUrl: user.avatarUrl
         }
       }
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: "Error logging in",
-      error: error.message
+      message: "Error logging in"
     });
   }
 });
 
-// Demo login (for testing)
+// Demo login endpoint
 router.post("/demo-login", async (req, res) => {
   try {
-    // Create or find demo user
+    // Find or create demo user
     let user = await User.findOne({ email: "demo@example.com" });
     
     if (!user) {
-      user = await User.create({
+      user = new User({
         name: "Demo User",
         email: "demo@example.com",
-        password: await bcrypt.hash("demo123", 10)
+        password: "demo123"
       });
+      await user.save();
     }
 
-    // Create token
     const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        name: user.name
-      },
-      process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production",
-      { expiresIn: "30d" }
+      { userId: user._id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
     );
 
     res.status(200).json({
       success: true,
-      message: "Demo login successful",
       data: {
         token,
         user: {
@@ -158,37 +142,10 @@ router.post("/demo-login", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Demo login error:", error);
+    console.error('Demo login error:', error);
     res.status(500).json({
       success: false,
-      message: "Error with demo login",
-      error: error.message
-    });
-  }
-});
-
-// Get current user
-router.get("/me", protect, async (req, res) => { // Changed to protect
-  try {
-    const user = await User.findById(req.user.userId).select("-password");
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: user
-    });
-  } catch (error) {
-    console.error("Get user error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching user data",
-      error: error.message
+      message: "Error with demo login"
     });
   }
 });
