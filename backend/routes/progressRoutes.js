@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js"; // Changed from verifyToken to protect
+import { authMiddleware as protect } from "../middleware/authMiddleware.js"; // Changed from verifyToken to protect
 import Progress from "../models/Progress.js";
 import User from "../models/User.js";
 
