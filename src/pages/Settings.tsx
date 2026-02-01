@@ -6,8 +6,6 @@ import {
   Save, CheckCircle2, LogOut, ShieldCheck,
   MapPin, Briefcase, Award
 } from "lucide-react";
-import { auth } from "../firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { applyTheme } from "../lib/theme";
 
@@ -16,7 +14,7 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState("light");
 
   const [userData, setUserData] = useState({
     name: "",
@@ -27,31 +25,40 @@ const Settings = () => {
     skills: "React, Node.js, Python"
   });
 
-  // AUTH
+  // AUTH - GET USER FROM LOCALSTORAGE (not Firebase)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserData((prev) => ({
+    // Get user from localStorage where your backend stores it
+    const userStr = localStorage.getItem('user');
+    
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        console.log("Loaded user from localStorage:", user); // Debug log
+        setUserData(prev => ({
           ...prev,
-          name: user.displayName || "Candidate",
+          name: user.name || "Candidate",
           email: user.email || ""
         }));
-      } else {
+      } catch (error) {
+        console.error("Error parsing user data:", error);
         navigate("/auth");
       }
-    });
-    return () => unsubscribe();
+    } else {
+      // No user found, redirect to auth
+      navigate("/auth");
+    }
   }, [navigate]);
 
   // THEME INIT
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
+    const savedTheme = localStorage.getItem("theme");
     if (savedTheme) setTheme(savedTheme);
   }, []);
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
+    localStorage.setItem("theme", next);
     applyTheme(next);
   };
 
@@ -65,7 +72,9 @@ const Settings = () => {
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    // Clear localStorage (your backend auth storage)
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
     navigate("/auth");
   };
 
@@ -76,7 +85,7 @@ const Settings = () => {
         <div>
           <h1 className="text-3xl font-bold uppercase italic">Node Configuration</h1>
           <p className="text-xs tracking-widest opacity-70 italic">
-            Auth Layer: Firebase Active
+            Auth Layer: Backend API Active
           </p>
         </div>
         <button
@@ -121,7 +130,7 @@ const Settings = () => {
             <div className="space-y-8">
               {activeTab === "profile" && (
                 <div className="space-y-6">
-                  {/* Avatar Section - Seeded by Email */}
+                  {/* Avatar Section */}
                   <div className="flex items-center gap-6">
                     <div className="relative group">
                       <div className="w-24 h-24 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center overflow-hidden">
@@ -136,8 +145,15 @@ const Settings = () => {
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-xl font-black uppercase text-white tracking-tighter italic">{userData.name}</h3>
-                      <p className="text-[10px] text-cyan-400 font-black tracking-[0.3em] uppercase opacity-70">Authenticated Profile</p>
+                      <h3 className="text-xl font-black uppercase text-white tracking-tighter italic">
+                        {userData.name}
+                      </h3>
+                      <p className="text-[10px] text-cyan-400 font-black tracking-[0.3em] uppercase opacity-70">
+                        {userData.email}
+                      </p>
+                      <p className="text-[8px] text-slate-500 font-black tracking-[0.3em] uppercase mt-1">
+                        Backend Authenticated
+                      </p>
                     </div>
                   </div>
 
@@ -202,7 +218,8 @@ const Settings = () => {
               {activeTab === "security" && (
                 <div className="space-y-4">
                   <ShieldCheck size={32} className="text-cyan-400" />
-                  <p>Firebase authentication active</p>
+                  <p className="text-sm font-bold uppercase tracking-widest text-slate-300">Backend Authentication Active</p>
+                  <p className="text-xs text-slate-500">JWT token-based security enabled</p>
                 </div>
               )}
 
@@ -234,7 +251,7 @@ const Settings = () => {
             </div>
 
             {/* Footer */}
-            <button onClick={handleSave} disabled={isSaving} className="w-full glass px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-2">
+            <button onClick={handleSave} disabled={isSaving} className="w-full glass px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-2 mt-8">
               <Save size={16} />
               {isSaving ? "Saving..." : "Save Changes"}
             </button>

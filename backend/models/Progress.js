@@ -5,15 +5,46 @@ const progressSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+    unique: true,
     index: true
   },
   
-  // Skill Proficiency Tracking
+  dailyStats: {
+    streak: {
+      type: Number,
+      default: 0
+    },
+    lastActive: {
+      type: Date,
+      default: Date.now
+    },
+    dailyGoalsCompleted: {
+      type: Number,
+      default: 0
+    }
+  },
+  
   skillProficiency: [{
     skillName: {
       type: String,
       required: true,
-      enum: ['Data Structures', 'System Design', 'Frontend', 'Backend', 'Databases', 'Algorithms']
+      enum: [
+        "Data Structures",
+        "Algorithms", 
+        "System Design",
+        "Frontend",
+        "Backend",
+        "Databases",
+        "Networking",
+        "Security",
+        "Testing",
+        "DevOps",
+        "Cloud Computing",
+        "Mobile Development",
+        "Machine Learning",
+        "Data Science",
+        "Product Management"
+      ]
     },
     proficiency: {
       type: Number,
@@ -27,668 +58,439 @@ const progressSchema = new mongoose.Schema({
     },
     history: [{
       proficiency: Number,
-      date: { 
-        type: Date, 
-        default: Date.now 
-      }
+      date: Date
     }]
   }],
   
-  // Test History
   testHistory: [{
-    testId: {
-      type: mongoose.Schema.Types.ObjectId,
-      default: () => new mongoose.Types.ObjectId()
-    },
-    testName: {
-      type: String,
-      required: true
-    },
-    category: {
-      type: String,
-      required: true
-    },
-    score: {
-      type: Number,
-      required: true,
-      min: 0
-    },
-    totalScore: {
-      type: Number,
-      required: true,
-      min: 1
-    },
-    accuracy: {
-      type: Number,
-      min: 0,
-      max: 100
-    },
-    duration: {
-      type: Number, // in minutes
-      min: 0
-    },
-    date: { 
-      type: Date, 
-      default: Date.now 
-    },
-    difficulty: {
-      type: String,
-      enum: ['Easy', 'Medium', 'Hard']
-    },
-    topics: [String],
-    timePerQuestion: Number // in seconds
-  }],
-  
-  // Daily/Weekly Tracking
-  dailyStats: {
-    questionsSolved: { 
-      type: Number, 
-      default: 0 
-    },
-    timeSpent: { 
-      type: Number, 
-      default: 0 
-    }, // in minutes
-    accuracy: { 
-      type: Number, 
-      default: 0 
-    },
-    streak: { 
-      type: Number, 
-      default: 0 
-    },
-    lastActive: {
+    testId: String,
+    testName: String,
+    category: String,
+    difficulty: String,
+    score: Number,
+    totalScore: Number,
+    accuracy: Number,
+    duration: Number,
+    date: {
       type: Date,
       default: Date.now
-    }
-  },
-  
-  // Achievements
-  achievements: [{
-    achievementId: {
-      type: String,
-      required: true
     },
-    title: {
-      type: String,
-      required: true
-    },
-    description: {
-      type: String,
-      required: true
-    },
-    icon: {
-      type: String,
-      required: true
-    },
-    unlocked: { 
-      type: Boolean, 
-      default: false 
-    },
-    unlockedAt: Date,
-    progress: { 
-      type: Number, 
-      default: 0 
-    },
-    totalRequired: { 
-      type: Number, 
-      default: 1 
-    }
+    topics: [String]
   }],
   
-  // Study Analytics
   studyAnalytics: {
-    totalQuestionsAttempted: { 
-      type: Number, 
-      default: 0 
+    totalQuestionsAttempted: {
+      type: Number,
+      default: 0
     },
-    totalTestsTaken: { 
-      type: Number, 
-      default: 0 
+    totalTestsTaken: {
+      type: Number,
+      default: 0
     },
-    averageAccuracy: { 
-      type: Number, 
-      default: 0 
+    averageAccuracy: {
+      type: Number,
+      default: 0
     },
-    averageTimePerQuestion: { 
-      type: Number, 
-      default: 0 
+    averageTimePerQuestion: {
+      type: Number,
+      default: 0
     },
-    consistencyScore: { 
-      type: Number, 
-      default: 0 
+    consistencyScore: {
+      type: Number,
+      default: 0
     },
-    estimatedReadiness: { 
-      type: Number, 
-      default: 0 
+    estimatedReadiness: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 1
     },
-    strongestTopics: [{
-      topic: String,
-      score: Number
-    }],
     weakAreas: [{
+      topic: String,
+      score: Number,
+      improvementNeeded: Number
+    }],
+    strongAreas: [{
       topic: String,
       score: Number
     }]
   },
   
-  // Career Projection
   careerProjection: {
     productCompanies: {
-      matchPercentage: { 
-        type: Number, 
-        default: 0 
+      matchPercentage: {
+        type: Number,
+        default: 0
       },
-      readinessLevel: { 
-        type: Number, 
-        default: 0 
+      readinessLevel: {
+        type: Number,
+        min: 1,
+        max: 5,
+        default: 1
       },
-      estimatedMonths: { 
-        type: Number, 
-        default: 12 
+      estimatedMonths: {
+        type: Number,
+        default: 6
       }
     },
     earlyStartups: {
-      matchPercentage: { 
-        type: Number, 
-        default: 0 
+      matchPercentage: {
+        type: Number,
+        default: 0
       },
-      readinessLevel: { 
-        type: Number, 
-        default: 0 
+      readinessLevel: {
+        type: Number,
+        min: 1,
+        max: 5,
+        default: 1
       },
-      estimatedMonths: { 
-        type: Number, 
-        default: 6 
+      estimatedMonths: {
+        type: Number,
+        default: 4
       }
     },
     quantTrading: {
-      matchPercentage: { 
-        type: Number, 
-        default: 0 
+      matchPercentage: {
+        type: Number,
+        default: 0
       },
-      readinessLevel: { 
-        type: Number, 
-        default: 0 
+      readinessLevel: {
+        type: Number,
+        min: 1,
+        max: 5,
+        default: 1
       },
-      estimatedMonths: { 
-        type: Number, 
-        default: 18 
+      estimatedMonths: {
+        type: Number,
+        default: 8
       }
     }
+  },
+  
+  achievements: [{
+    achievementId: String,
+    title: String,
+    description: String,
+    icon: String,
+    unlocked: {
+      type: Boolean,
+      default: false
+    },
+    unlockedAt: Date,
+    progress: Number,
+    totalRequired: Number
+  }],
+  
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
-  timestamps: true,
-  toJSON: { 
-    virtuals: true,
-    transform: function(doc, ret) {
-      delete ret.__v;
-      return ret;
-    }
-  },
-  toObject: { 
-    virtuals: true 
-  }
+  timestamps: true
 });
 
-// Indexes for better query performance
-progressSchema.index({ userId: 1, 'testHistory.date': -1 });
-progressSchema.index({ 'skillProficiency.skillName': 1 });
-progressSchema.index({ 'achievements.unlocked': 1 });
-progressSchema.index({ 'dailyStats.lastActive': -1 });
-
-// Virtual for consistency days
-progressSchema.virtual('consistencyDays').get(function() {
-  if (!this.dailyStats.lastActive) return 0;
-  
-  const today = new Date();
-  const lastActive = new Date(this.dailyStats.lastActive);
-  const diffTime = Math.abs(today - lastActive);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return Math.min(this.dailyStats.streak || 0, diffDays === 0 ? this.dailyStats.streak + 1 : 1);
-});
+// Indexes
+progressSchema.index({ userId: 1 });
+progressSchema.index({ "skillProficiency.skillName": 1 });
 
 // Pre-save middleware
-progressSchema.pre('save', function(next) {
-  // Update lastActive timestamp
-  this.dailyStats.lastActive = new Date();
+progressSchema.pre("save", function(next) {
+  this.updatedAt = new Date();
   
-  // Calculate accuracy if not provided
-  if (this.testHistory.length > 0) {
-    const latestTest = this.testHistory[this.testHistory.length - 1];
-    if (!latestTest.accuracy && latestTest.totalScore > 0) {
-      latestTest.accuracy = (latestTest.score / latestTest.totalScore) * 100;
-    }
+  // Update study analytics
+  if (this.testHistory && this.testHistory.length > 0) {
+    this.updateStudyAnalytics();
   }
   
-  // Recalculate analytics
-  this.updateAnalytics();
+  // Update career projections based on skills
+  if (this.skillProficiency && this.skillProficiency.length > 0) {
+    this.updateCareerProjections();
+  }
   
   next();
 });
 
-// Method to update daily streak
-progressSchema.methods.updateStreak = function() {
-  const today = new Date();
-  const lastActive = this.dailyStats.lastActive;
+// Instance method to add test result
+progressSchema.methods.addTestResult = function(testData) {
+  const {
+    testName,
+    category,
+    score,
+    totalScore,
+    accuracy,
+    duration,
+    difficulty,
+    topics,
+    timePerQuestion
+  } = testData;
   
-  if (!lastActive) {
-    this.dailyStats.streak = 1;
-  } else {
-    const lastActiveDate = new Date(lastActive);
-    lastActiveDate.setHours(0, 0, 0, 0);
-    const todayDate = new Date(today);
-    todayDate.setHours(0, 0, 0, 0);
+  const newTest = {
+    testId: `test_${Date.now()}`,
+    testName: testName || "Practice Test",
+    category: category || "General",
+    difficulty: difficulty || "Medium",
+    score: Math.max(0, score || 0),
+    totalScore: Math.max(1, totalScore || 10),
+    accuracy: Math.min(100, Math.max(0, accuracy || 0)),
+    duration: Math.max(0, duration || 0),
+    date: new Date(),
+    topics: topics || []
+  };
+  
+  this.testHistory.push(newTest);
+  
+  // Update daily stats for streak
+  const today = new Date().toDateString();
+  const lastActive = new Date(this.dailyStats.lastActive).toDateString();
+  
+  if (today !== lastActive) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
     
-    const diffDays = Math.floor((todayDate - lastActiveDate) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      // Consecutive day
+    if (yesterday.toDateString() === lastActive) {
       this.dailyStats.streak += 1;
-    } else if (diffDays > 1) {
-      // Streak broken
+    } else {
       this.dailyStats.streak = 1;
     }
-    // diffDays === 0 means same day, keep streak as is
-  }
-  
-  this.dailyStats.lastActive = today;
-  return this.dailyStats.streak;
-};
-
-// Method to add test result
-progressSchema.methods.addTestResult = async function(testData) {
-  // Generate testId if not provided
-  if (!testData.testId) {
-    testData.testId = new mongoose.Types.ObjectId();
-  }
-  
-  // Calculate accuracy if not provided
-  if (!testData.accuracy && testData.totalScore > 0) {
-    testData.accuracy = (testData.score / testData.totalScore) * 100;
-  }
-  
-  // Set date if not provided
-  if (!testData.date) {
-    testData.date = new Date();
-  }
-  
-  // Add to test history
-  this.testHistory.push(testData);
-  
-  // Update daily stats
-  this.dailyStats.questionsSolved += testData.totalScore || 0;
-  this.dailyStats.timeSpent += testData.duration || 0;
-  
-  // Update streak
-  this.updateStreak();
-  
-  // Update skill proficiency if test has topics
-  if (testData.topics && testData.topics.length > 0) {
-    this.updateSkillProficiency(testData.topics, testData.accuracy || 0);
-  }
-  
-  // Update achievements
-  await this.checkAchievements();
-  
-  // Update analytics
-  this.updateAnalytics();
-  
-  await this.save();
-  return this;
-};
-
-// Method to update skill proficiency
-progressSchema.methods.updateSkillProficiency = function(topics, accuracy) {
-  const proficiencyIncrease = accuracy / 20; // 5% per 100% accuracy
-  
-  topics.forEach(topic => {
-    const skillIndex = this.skillProficiency.findIndex(s => s.skillName === topic);
     
-    if (skillIndex >= 0) {
-      // Update existing skill
-      const currentProficiency = this.skillProficiency[skillIndex].proficiency;
-      const newProficiency = Math.min(100, currentProficiency + proficiencyIncrease);
-      
-      this.skillProficiency[skillIndex].proficiency = newProficiency;
-      this.skillProficiency[skillIndex].lastUpdated = new Date();
-      this.skillProficiency[skillIndex].history.push({
-        proficiency: newProficiency,
-        date: new Date()
-      });
-      
-      // Keep only last 10 history entries
-      if (this.skillProficiency[skillIndex].history.length > 10) {
-        this.skillProficiency[skillIndex].history = this.skillProficiency[skillIndex].history.slice(-10);
-      }
-    } else {
-      // Add new skill
-      this.skillProficiency.push({
-        skillName: topic,
-        proficiency: proficiencyIncrease,
-        lastUpdated: new Date(),
-        history: [{
-          proficiency: proficiencyIncrease,
-          date: new Date()
-        }]
-      });
-    }
-  });
+    this.dailyStats.lastActive = new Date();
+  }
+  
+  return newTest;
 };
 
-// Method to update analytics
-progressSchema.methods.updateAnalytics = function() {
+// Instance method to update study analytics
+progressSchema.methods.updateStudyAnalytics = function() {
   const tests = this.testHistory;
   
   if (tests.length === 0) return;
   
-  // Calculate averages
-  const totalAccuracy = tests.reduce((sum, test) => sum + (test.accuracy || 0), 0);
-  const totalTime = tests.reduce((sum, test) => sum + (test.timePerQuestion || 0), 0);
+  // Calculate totals
+  const totalTests = tests.length;
   const totalQuestions = tests.reduce((sum, test) => sum + (test.totalScore || 0), 0);
+  const totalCorrect = tests.reduce((sum, test) => sum + (test.score || 0), 0);
+  const totalDuration = tests.reduce((sum, test) => sum + (test.duration || 0), 0);
   
-  this.studyAnalytics.totalTestsTaken = tests.length;
-  this.studyAnalytics.totalQuestionsAttempted = totalQuestions;
-  this.studyAnalytics.averageAccuracy = totalAccuracy / tests.length;
-  this.studyAnalytics.averageTimePerQuestion = totalTime / tests.length;
+  // Calculate averages
+  const averageAccuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
+  const averageTimePerQuestion = totalQuestions > 0 ? totalDuration / totalQuestions : 0;
   
-  // Calculate consistency score (based on last 30 days)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Calculate consistency (based on variance in scores)
+  const accuracies = tests.map(t => t.accuracy || 0);
+  const meanAccuracy = accuracies.reduce((a, b) => a + b, 0) / accuracies.length;
+  const variance = accuracies.reduce((a, b) => a + Math.pow(b - meanAccuracy, 2), 0) / accuracies.length;
+  const consistencyScore = Math.max(0, 100 - Math.sqrt(variance));
   
-  const recentTests = tests.filter(test => new Date(test.date) >= thirtyDaysAgo);
-  const uniqueDays = new Set(recentTests.map(test => 
-    new Date(test.date).toDateString()
-  )).size;
-  
-  this.studyAnalytics.consistencyScore = Math.min(100, (uniqueDays / 30) * 100);
-  
-  // Update estimated readiness (1-5 scale based on average accuracy)
-  this.studyAnalytics.estimatedReadiness = Math.min(
-    5,
-    Math.floor(this.studyAnalytics.averageAccuracy / 20) + 1
-  );
-  
-  // Update strongest topics and weak areas
-  this.updateTopicAnalysis();
-  
-  // Update career projection
-  this.updateCareerProjection();
-};
-
-// Method to update topic analysis
-progressSchema.methods.updateTopicAnalysis = function() {
-  const topicScores = {};
-  
-  // Collect all topics and their average scores
-  this.testHistory.forEach(test => {
-    if (test.topics && test.accuracy) {
-      test.topics.forEach(topic => {
-        if (!topicScores[topic]) {
-          topicScores[topic] = { total: 0, count: 0 };
-        }
-        topicScores[topic].total += test.accuracy;
-        topicScores[topic].count += 1;
-      });
-    }
-  });
-  
-  // Calculate averages and sort
-  const topicAverages = Object.entries(topicScores).map(([topic, data]) => ({
-    topic,
-    score: data.total / data.count
-  })).sort((a, b) => b.score - a.score);
-  
-  // Set strongest topics (top 3)
-  this.studyAnalytics.strongestTopics = topicAverages.slice(0, 3);
-  
-  // Set weak areas (bottom 3)
-  this.studyAnalytics.weakAreas = topicAverages.slice(-3).reverse();
-};
-
-// Method to update career projection
-progressSchema.methods.updateCareerProjection = function() {
-  const baseScore = this.studyAnalytics.averageAccuracy;
-  const consistency = this.studyAnalytics.consistencyScore;
-  
-  // Weighted score considering both accuracy and consistency
-  const weightedScore = (baseScore * 0.7) + (consistency * 0.3);
-  
-  this.careerProjection = {
-    productCompanies: {
-      matchPercentage: Math.min(100, Math.round(weightedScore * 1.1)),
-      readinessLevel: Math.min(5, Math.floor(weightedScore / 20) + 1),
-      estimatedMonths: Math.max(1, Math.floor(12 - (weightedScore / 10)))
-    },
-    earlyStartups: {
-      matchPercentage: Math.min(100, Math.round(weightedScore * 0.9)),
-      readinessLevel: Math.min(5, Math.floor(weightedScore / 25) + 1),
-      estimatedMonths: Math.max(1, Math.floor(6 - (weightedScore / 20)))
-    },
-    quantTrading: {
-      matchPercentage: Math.min(100, Math.round(weightedScore * 0.7)),
-      readinessLevel: Math.min(5, Math.floor(weightedScore / 30) + 1),
-      estimatedMonths: Math.max(1, Math.floor(18 - (weightedScore / 15)))
-    }
+  // Update analytics
+  this.studyAnalytics = {
+    totalQuestionsAttempted: totalQuestions,
+    totalTestsTaken: totalTests,
+    averageAccuracy: Math.round(averageAccuracy * 10) / 10,
+    averageTimePerQuestion: Math.round(averageTimePerQuestion),
+    consistencyScore: Math.round(consistencyScore),
+    estimatedReadiness: this.calculateReadinessLevel(averageAccuracy, consistencyScore),
+    weakAreas: this.identifyWeakAreas(tests),
+    strongAreas: this.identifyStrongAreas(tests)
   };
 };
 
-// Method to check and update achievements
-progressSchema.methods.checkAchievements = async function() {
-  const achievements = this.achievements;
+// Instance method to calculate readiness level
+progressSchema.methods.calculateReadinessLevel = function(averageAccuracy, consistencyScore) {
+  const combinedScore = (averageAccuracy * 0.7) + (consistencyScore * 0.3);
   
-  // First test achievement
-  const firstTest = achievements.find(a => a.achievementId === 'first_test');
-  if (firstTest && !firstTest.unlocked && this.testHistory.length >= 1) {
-    firstTest.unlocked = true;
-    firstTest.unlockedAt = new Date();
-    firstTest.progress = 1;
-  }
-  
-  // 7-day streak achievement
-  const streak7 = achievements.find(a => a.achievementId === 'streak_7');
-  if (streak7) {
-    streak7.progress = Math.min(7, this.dailyStats.streak || 0);
-    if (this.dailyStats.streak >= 7 && !streak7.unlocked) {
-      streak7.unlocked = true;
-      streak7.unlockedAt = new Date();
-    }
-  }
-  
-  // Perfect score achievement
-  const perfectScore = achievements.find(a => a.achievementId === 'perfect_score');
-  if (perfectScore) {
-    const perfectTests = this.testHistory.filter(test => test.accuracy === 100);
-    perfectScore.progress = perfectTests.length;
-    if (perfectTests.length >= 1 && !perfectScore.unlocked) {
-      perfectScore.unlocked = true;
-      perfectScore.unlockedAt = new Date();
-    }
-  }
-  
-  // Algorithm ace achievement
-  const algorithmAce = achievements.find(a => a.achievementId === 'algorithm_ace');
-  if (algorithmAce) {
-    const dsaTests = this.testHistory.filter(test => 
-      test.topics && test.topics.includes('Data Structures') && test.accuracy === 100
-    );
-    algorithmAce.progress = dsaTests.length;
-    if (dsaTests.length >= 1 && !algorithmAce.unlocked) {
-      algorithmAce.unlocked = true;
-      algorithmAce.unlockedAt = new Date();
-    }
-  }
-  
-  await this.save();
+  if (combinedScore >= 90) return 5;
+  if (combinedScore >= 80) return 4;
+  if (combinedScore >= 70) return 3;
+  if (combinedScore >= 60) return 2;
+  return 1;
 };
 
-// Static method to get user progress
-progressSchema.statics.getUserProgress = async function(userId) {
-  let progress = await this.findOne({ userId });
+// Instance method to identify weak areas
+progressSchema.methods.identifyWeakAreas = function(tests) {
+  const categoryPerformance = {};
   
-  if (!progress) {
-    progress = await this.createDefaultProgress(userId);
-  }
+  tests.forEach(test => {
+    if (test.category && test.accuracy !== undefined) {
+      if (!categoryPerformance[test.category]) {
+        categoryPerformance[test.category] = {
+          total: 0,
+          sum: 0
+        };
+      }
+      categoryPerformance[test.category].total++;
+      categoryPerformance[test.category].sum += test.accuracy;
+    }
+  });
   
-  // Ensure analytics are up to date
-  progress.updateAnalytics();
+  const weakAreas = Object.entries(categoryPerformance)
+    .filter(([_, data]) => data.sum / data.total < 70)
+    .map(([category, data]) => ({
+      topic: category,
+      score: Math.round(data.sum / data.total),
+      improvementNeeded: 70 - Math.round(data.sum / data.total)
+    }))
+    .slice(0, 3);
   
-  await progress.save();
-  return progress;
+  return weakAreas;
+};
+
+// Instance method to identify strong areas
+progressSchema.methods.identifyStrongAreas = function(tests) {
+  const categoryPerformance = {};
+  
+  tests.forEach(test => {
+    if (test.category && test.accuracy !== undefined) {
+      if (!categoryPerformance[test.category]) {
+        categoryPerformance[test.category] = {
+          total: 0,
+          sum: 0
+        };
+      }
+      categoryPerformance[test.category].total++;
+      categoryPerformance[test.category].sum += test.accuracy;
+    }
+  });
+  
+  const strongAreas = Object.entries(categoryPerformance)
+    .filter(([_, data]) => data.sum / data.total >= 80)
+    .map(([category, data]) => ({
+      topic: category,
+      score: Math.round(data.sum / data.total)
+    }))
+    .slice(0, 3);
+  
+  return strongAreas;
+};
+
+// Instance method to update career projections
+progressSchema.methods.updateCareerProjections = function() {
+  const skills = this.skillProficiency;
+  
+  if (!skills || skills.length === 0) return;
+  
+  // Calculate average proficiency
+  const avgProficiency = skills.reduce((sum, skill) => sum + skill.proficiency, 0) / skills.length;
+  
+  // Product companies weight technical skills heavily
+  const productCompanyScore = avgProficiency * 0.8 + this.studyAnalytics.consistencyScore * 0.2;
+  
+  // Startups value versatility and speed
+  const startupScore = avgProficiency * 0.6 + (100 / Math.max(1, this.studyAnalytics.averageTimePerQuestion)) * 0.4;
+  
+  // Quant trading values high accuracy and specific skills
+  const algorithmSkills = skills.filter(s => 
+    ["Algorithms", "Data Structures", "Machine Learning", "Data Science"].includes(s.skillName)
+  );
+  const quantScore = algorithmSkills.length > 0 
+    ? algorithmSkills.reduce((sum, skill) => sum + skill.proficiency, 0) / algorithmSkills.length 
+    : avgProficiency * 0.5;
+  
+  // Update projections
+  this.careerProjection = {
+    productCompanies: {
+      matchPercentage: Math.min(100, Math.round(productCompanyScore)),
+      readinessLevel: Math.min(5, Math.ceil(productCompanyScore / 20)),
+      estimatedMonths: Math.max(1, Math.ceil((100 - productCompanyScore) / 10))
+    },
+    earlyStartups: {
+      matchPercentage: Math.min(100, Math.round(startupScore)),
+      readinessLevel: Math.min(5, Math.ceil(startupScore / 20)),
+      estimatedMonths: Math.max(1, Math.ceil((100 - startupScore) / 15))
+    },
+    quantTrading: {
+      matchPercentage: Math.min(100, Math.round(quantScore)),
+      readinessLevel: Math.min(5, Math.ceil(quantScore / 20)),
+      estimatedMonths: Math.max(1, Math.ceil((100 - quantScore) / 8))
+    }
+  };
 };
 
 // Static method to create default progress
 progressSchema.statics.createDefaultProgress = async function(userId) {
-  // Check if user is demo user
-  const User = mongoose.model('User');
-  const user = await User.findById(userId);
-  const isDemoUser = user && user.email === 'demo@placementprep.com';
-  
   const defaultAchievements = [
     {
-      achievementId: 'first_test',
-      title: 'First Step',
-      description: 'Complete your first practice test',
-      icon: 'Target',
-      unlocked: isDemoUser,
-      unlockedAt: isDemoUser ? new Date('2026-01-01') : null,
-      progress: isDemoUser ? 1 : 0,
+      achievementId: "first_test",
+      title: "First Test Completed",
+      description: "Complete your first practice test",
+      icon: "Trophy",
+      unlocked: false,
+      progress: 0,
       totalRequired: 1
     },
     {
-      achievementId: 'streak_7',
-      title: 'Consistent Learner',
-      description: 'Maintain a 7-day practice streak',
-      icon: 'Calendar',
-      unlocked: isDemoUser,
-      unlockedAt: isDemoUser ? new Date('2026-01-07') : null,
-      progress: isDemoUser ? 14 : 0,
-      totalRequired: 7
+      achievementId: "streak_3",
+      title: "3-Day Streak",
+      description: "Practice for 3 consecutive days",
+      icon: "Flame",
+      unlocked: false,
+      progress: 0,
+      totalRequired: 3
     },
     {
-      achievementId: 'algorithm_ace',
-      title: 'Algorithm Ace',
-      description: 'Score 100% on DSA test',
-      icon: 'Terminal',
-      unlocked: isDemoUser,
-      unlockedAt: isDemoUser ? new Date('2026-01-10') : null,
-      progress: isDemoUser ? 1 : 0,
-      totalRequired: 1
-    },
-    {
-      achievementId: 'perfect_score',
-      title: 'Perfectionist',
-      description: 'Achieve 100% accuracy on any test',
-      icon: 'Star',
-      unlocked: isDemoUser,
-      unlockedAt: isDemoUser ? new Date('2026-01-10') : null,
-      progress: isDemoUser ? 1 : 0,
+      achievementId: "accuracy_80",
+      title: "Accuracy Master",
+      description: "Achieve 80% accuracy in a test",
+      icon: "Target",
+      unlocked: false,
+      progress: 0,
       totalRequired: 1
     }
   ];
   
-  const defaultProgress = {
+  const defaultSkills = [
+    { skillName: "Data Structures", proficiency: 0 },
+    { skillName: "Algorithms", proficiency: 0 },
+    { skillName: "System Design", proficiency: 0 },
+    { skillName: "Frontend", proficiency: 0 },
+    { skillName: "Backend", proficiency: 0 }
+  ];
+  
+  const progress = new this({
     userId,
-    skillProficiency: [
-      { skillName: 'Data Structures', proficiency: isDemoUser ? 85 : 0, lastUpdated: new Date(), history: [] },
-      { skillName: 'System Design', proficiency: isDemoUser ? 62 : 0, lastUpdated: new Date(), history: [] },
-      { skillName: 'Frontend', proficiency: isDemoUser ? 94 : 0, lastUpdated: new Date(), history: [] },
-      { skillName: 'Backend', proficiency: isDemoUser ? 45 : 0, lastUpdated: new Date(), history: [] }
-    ],
-    testHistory: isDemoUser ? [
-      {
-        testId: new mongoose.Types.ObjectId(),
-        testName: 'DSA Fundamentals',
-        category: 'Technical',
-        score: 8,
-        totalScore: 10,
-        accuracy: 80,
-        duration: 12,
-        date: new Date('2026-01-15'),
-        difficulty: 'Medium',
-        topics: ['Data Structures', 'Algorithms'],
-        timePerQuestion: 72
-      },
-      {
-        testId: new mongoose.Types.ObjectId(),
-        testName: 'System Design Expert',
-        category: 'Architecture',
-        score: 7,
-        totalScore: 10,
-        accuracy: 70,
-        duration: 25,
-        date: new Date('2026-01-12'),
-        difficulty: 'Hard',
-        topics: ['System Design', 'Scalability'],
-        timePerQuestion: 150
-      },
-      {
-        testId: new mongoose.Types.ObjectId(),
-        testName: 'React Mastery',
-        category: 'Frontend',
-        score: 10,
-        totalScore: 10,
-        accuracy: 100,
-        duration: 8,
-        date: new Date('2026-01-10'),
-        difficulty: 'Easy',
-        topics: ['Frontend', 'React'],
-        timePerQuestion: 48
-      }
-    ] : [],
     dailyStats: {
-      questionsSolved: isDemoUser ? 30 : 0,
-      timeSpent: isDemoUser ? 45 : 0,
-      accuracy: isDemoUser ? 83.3 : 0,
-      streak: isDemoUser ? 14 : 0,
+      streak: 0,
       lastActive: new Date()
     },
-    achievements: defaultAchievements,
+    skillProficiency: defaultSkills,
+    testHistory: [],
     studyAnalytics: {
-      totalQuestionsAttempted: isDemoUser ? 30 : 0,
-      totalTestsTaken: isDemoUser ? 3 : 0,
-      averageAccuracy: isDemoUser ? 83.3 : 0,
-      averageTimePerQuestion: isDemoUser ? 90 : 0,
-      consistencyScore: isDemoUser ? 92 : 0,
-      estimatedReadiness: isDemoUser ? 4 : 0,
-      strongestTopics: isDemoUser ? [
-        { topic: 'React', score: 94 },
-        { topic: 'Data Structures', score: 85 }
-      ] : [],
-      weakAreas: isDemoUser ? [
-        { topic: 'Backend', score: 45 },
-        { topic: 'System Design', score: 62 }
-      ] : []
+      totalQuestionsAttempted: 0,
+      totalTestsTaken: 0,
+      averageAccuracy: 0,
+      averageTimePerQuestion: 0,
+      consistencyScore: 0,
+      estimatedReadiness: 1,
+      weakAreas: [],
+      strongAreas: []
     },
     careerProjection: {
-      productCompanies: { 
-        matchPercentage: isDemoUser ? 94 : 0, 
-        readinessLevel: isDemoUser ? 4 : 0, 
-        estimatedMonths: isDemoUser ? 2 : 12 
+      productCompanies: {
+        matchPercentage: 0,
+        readinessLevel: 1,
+        estimatedMonths: 6
       },
-      earlyStartups: { 
-        matchPercentage: isDemoUser ? 78 : 0, 
-        readinessLevel: isDemoUser ? 3 : 0, 
-        estimatedMonths: isDemoUser ? 1 : 6 
+      earlyStartups: {
+        matchPercentage: 0,
+        readinessLevel: 1,
+        estimatedMonths: 4
       },
-      quantTrading: { 
-        matchPercentage: isDemoUser ? 42 : 0, 
-        readinessLevel: isDemoUser ? 2 : 0, 
-        estimatedMonths: isDemoUser ? 4 : 18 
+      quantTrading: {
+        matchPercentage: 0,
+        readinessLevel: 1,
+        estimatedMonths: 8
       }
-    }
-  };
-  
-  const progress = await this.create(defaultProgress);
-  
-  // Initialize analytics
-  progress.updateAnalytics();
+    },
+    achievements: defaultAchievements
+  });
   
   await progress.save();
   return progress;
 };
 
 const Progress = mongoose.model("Progress", progressSchema);
-
 export default Progress;

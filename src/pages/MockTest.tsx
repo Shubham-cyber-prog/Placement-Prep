@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Timer, CheckCircle2, ChevronRight, ChevronLeft, Flag, 
-  Maximize2, Calculator, Edit3, X, BarChart3, RefreshCcw, 
-  Home, Award, Zap, Brain, ShieldAlert, Terminal, Lock, 
-  Cpu, Database, Network, Globe, Code2, Layers, BookOpen,
-  Users, Cloud, Server, Code, GitBranch, Cctv, AlertTriangle,
-  Hash, Clock, TrendingUp, Filter, Search, Settings, Bell,
-  Download, Upload, Share2, Volume2, VolumeX, Eye, EyeOff,
-  Camera, Mic, MicOff, Wifi, WifiOff, Battery, BatteryCharging,
-  Briefcase, GraduationCap, Target, Star, Trophy, Medal,
-  Building, FileText, HelpCircle, Lightbulb, Puzzle
+  Calculator, Edit3, X, BarChart3, Home, Award, 
+  Users, Target, TrendingUp, Search, Settings, Lock,
+  Clock, Award as AwardIcon
 } from "lucide-react";
 import { toast } from "sonner";
+
+// --- API CONFIG ---
+const API_BASE_URL = import.meta.env?.VITE_API_URL || 
+                     import.meta.env?.REACT_APP_API_URL || 
+                     'http://localhost:5000/api';
 
 // --- TYPES & SYSTEM CONFIG ---
 const TOTAL_TESTS = 28;
@@ -48,6 +47,254 @@ interface PerformanceMetrics {
   consistency: number;
   categoryBreakdown: Record<string, number>;
 }
+
+// --- ENHANCED API SERVICE ---
+const apiService = {
+  // Get auth token from localStorage
+  getToken: () => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        return user?.token;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  },
+
+  // Get refresh token
+  getRefreshToken: () => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        return user?.refreshToken;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  },
+
+  // API request helper
+  request: async (endpoint: string, options: RequestInit = {}) => {
+    const token = apiService.getToken();
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
+      ...options.headers,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (response.status === 401) {
+        // Token expired, try to refresh
+        const newToken = await apiService.refreshToken();
+        if (newToken) {
+          // Retry with new token
+          headers['Authorization'] = `Bearer ${newToken}`;
+          const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          
+          if (!retryResponse.ok) {
+            const error = await retryResponse.json().catch(() => ({ message: 'Network error' }));
+            throw new Error(error.message || `HTTP ${retryResponse.status}`);
+          }
+          return await retryResponse.json();
+        }
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Network error' }));
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  },
+
+  // Token refresh method
+  refreshToken: async () => {
+    const refreshToken = apiService.getRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Update localStorage with new tokens
+        const currentUser = localStorage.getItem('user');
+        if (currentUser) {
+          const user = JSON.parse(currentUser);
+          user.token = data.data.token;
+          user.refreshToken = data.data.refreshToken;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+        return data.data.token;
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Clear invalid session
+      localStorage.removeItem('user');
+    }
+    return null;
+  },
+
+  // Auth methods
+  login: async (email: string, password: string) => {
+    const response = await apiService.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (response.success) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.removeItem('guest_session'); // Clear any guest session
+    }
+    return response;
+  },
+
+  register: async (name: string, email: string, password: string) => {
+    const response = await apiService.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+    });
+    if (response.success) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.removeItem('guest_session'); // Clear any guest session
+    }
+    return response;
+  },
+
+  demoLogin: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/demo-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Demo login failed');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        localStorage.setItem('user', JSON.stringify(data.data));
+        localStorage.removeItem('guest_session'); // Clear any guest session
+        return data;
+      }
+      throw new Error(data.message || 'Demo login failed');
+    } catch (error) {
+      console.error('Demo login error:', error);
+      throw error;
+    }
+  },
+
+  getCurrentUser: async () => {
+    return await apiService.request('/auth/me');
+  },
+
+  logout: () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('guest_session');
+    localStorage.removeItem('placement_state_v1');
+  },
+
+  // Test activities methods
+  recordTestStart: async (testId: number, testName: string, category: string, difficulty: string) => {
+    return await apiService.request('/activities/record', {
+      method: 'POST',
+      body: JSON.stringify({
+        activityType: 'test_started',
+        metadata: {
+          testId: testId.toString(),
+          testName,
+          testCategory: category,
+          testDifficulty: difficulty,
+          startTime: new Date().toISOString(),
+        },
+        tags: ['test', 'started', category.toLowerCase()],
+      }),
+    });
+  },
+
+  recordQuestionAnswered: async (testId: number, questionId: number, questionIndex: number, 
+                                 answerSelected: number, correctAnswer: number, 
+                                 timeSpent: number, category: string, difficulty: string) => {
+    return await apiService.request('/activities/record', {
+      method: 'POST',
+      body: JSON.stringify({
+        activityType: 'question_answered',
+        metadata: {
+          testId: testId.toString(),
+          questionId: questionId.toString(),
+          questionIndex,
+          answerSelected,
+          correctAnswer,
+          timeSpent,
+          category,
+          difficulty,
+          isCorrect: answerSelected === correctAnswer,
+        },
+        tags: ['question', 'answered', category.toLowerCase()],
+      }),
+    });
+  },
+
+  recordQuestionFlagged: async (testId: number, questionId: number) => {
+    return await apiService.request('/activities/record', {
+      method: 'POST',
+      body: JSON.stringify({
+        activityType: 'question_flagged',
+        metadata: {
+          testId: testId.toString(),
+          questionId: questionId.toString(),
+        },
+        tags: ['question', 'flagged'],
+      }),
+    });
+  },
+
+  recordTestCompleted: async (testSessionData: any) => {
+    return await apiService.request('/activities/test-session', {
+      method: 'POST',
+      body: JSON.stringify(testSessionData),
+    });
+  },
+
+  getUserTestSessions: async (filters = {}) => {
+    const queryParams = new URLSearchParams(filters).toString();
+    return await apiService.request(`/activities/test-sessions?${queryParams}`);
+  },
+
+  getPerformanceAnalytics: async (period = '30d') => {
+    return await apiService.request(`/activities/analytics?period=${period}`);
+  },
+};
 
 // --- COMPREHENSIVE PLACEMENT QUESTION GENERATOR ---
 const generatePlacementDataset = (): TestModule[] => {
@@ -90,166 +337,1036 @@ const generatePlacementDataset = (): TestModule[] => {
     "System Design", "Behavioral"
   ];
 
-  const topics = {
-    "Quantitative Aptitude": [
-      "Percentage Calculations", "Profit and Loss", "Time and Work", 
-      "Time Speed Distance", "Probability", "Permutations", 
-      "Averages", "Ratio and Proportion", "Simple Interest", 
-      "Compound Interest", "Algebra", "Geometry", 
-      "Trigonometry", "Number Systems", "Data Interpretation"
-    ],
-    "Logical Reasoning": [
-      "Blood Relations", "Direction Sense", "Sitting Arrangement", 
-      "Coding-Decoding", "Series Completion", "Analogy", 
-      "Classification", "Syllogism", "Statement Conclusion", 
-      "Logical Deduction", "Puzzles", "Critical Reasoning", 
-      "Data Sufficiency", "Course of Action", "Cause and Effect"
-    ],
-    "Verbal Ability": [
-      "Reading Comprehension", "Sentence Correction", 
-      "Para Jumbles", "Error Spotting", "Vocabulary", 
-      "Synonyms and Antonyms", "Idioms and Phrases", 
-      "Active Passive Voice", "Direct Indirect Speech", 
-      "Fill in the Blanks", "Cloze Test", "Sentence Completion", 
-      "Paragraph Summary", "Critical Reasoning", "Essay Writing"
-    ],
-    "Technical Core": [
-      "Operating Systems", "Computer Networks", "DBMS Concepts", 
-      "OOPS Principles", "Software Engineering", "Compiler Design", 
-      "Computer Architecture", "Microprocessors", "Digital Logic", 
-      "Theory of Computation", "Computer Graphics", "Web Technologies", 
-      "Cyber Security", "Cloud Computing", "Big Data"
-    ],
-    "Coding Concepts": [
-      "Time Complexity", "Space Complexity", "Recursion", 
-      "Dynamic Programming", "Greedy Algorithms", "Backtracking", 
-      "Divide and Conquer", "Sorting Algorithms", "Searching Algorithms", 
-      "Graph Algorithms", "Tree Algorithms", "String Algorithms", 
-      "Bit Manipulation", "Mathematical Algorithms", "Pattern Matching"
-    ],
-    "Data Structures": [
-      "Arrays", "Linked Lists", "Stacks", "Queues", 
-      "Hash Tables", "Trees", "Binary Trees", "BST", 
-      "Heaps", "Graphs", "Tries", "Segment Trees", 
-      "Fenwick Trees", "Disjoint Sets", "Advanced Structures"
-    ],
-    "System Design": [
-      "Scalability", "Load Balancing", "Caching Strategies", 
-      "Database Design", "API Design", "Microservices", 
-      "Distributed Systems", "Message Queues", "CDN", 
-      "Rate Limiting", "Consistency Models", "Partitioning", 
-      "Replication", "Monitoring", "Failure Handling"
-    ],
-    "Behavioral": [
-      "Leadership Scenarios", "Conflict Resolution", 
-      "Team Management", "Project Planning", "Communication", 
-      "Work Ethics", "Stress Management", "Decision Making", 
-      "Problem Solving Approach", "Career Goals", 
-      "Strengths and Weaknesses", "Company Research", 
-      "Situational Judgement", "Motivation Factors", "Feedback Handling"
-    ]
+  // Helper functions
+  const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const factorial = (n: number): number => n <= 1 ? 1 : n * factorial(n - 1);
+
+  // Quantitative Aptitude Questions (12 unique)
+  const quantitativeQuestions = [
+    {
+      generate: () => {
+        const x = randomInt(15, 40);
+        const y = randomInt(10, 35);
+        const net = ((1 + x/100) * (1 - y/100) - 1) * 100;
+        return {
+          question: `If the price of a laptop increases by ${x}% and then decreases by ${y}%, what is the net percentage change in price?`,
+          correct: `${net.toFixed(2)}%`,
+          options: [
+            `${(net * 1.2).toFixed(2)}%`,
+            `${(net * 0.8).toFixed(2)}%`,
+            `${net.toFixed(2)}%`,
+            `${(x - y).toFixed(2)}%`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const a = randomInt(8, 15);
+        const b = randomInt(12, 20);
+        const days = 1 / (1/a + 1/b);
+        return {
+          question: `Person A can complete a project in ${a} days. Person B can complete the same project in ${b} days. If they work together, how many days will it take to complete the project?`,
+          correct: `${days.toFixed(1)} days`,
+          options: [
+            `${(a + b)/2} days`,
+            `${Math.min(a, b)} days`,
+            `${days.toFixed(1)} days`,
+            `${Math.max(a, b)} days`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const prob = (4/52) * (3/51);
+        return {
+          question: "What is the probability of drawing two aces consecutively from a standard deck of 52 cards without replacement?",
+          correct: prob.toFixed(6),
+          options: [
+            "1/169",
+            "1/221",
+            prob.toFixed(6),
+            "4/663"
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const r1 = randomInt(3, 7);
+        const r2 = randomInt(2, 6);
+        const diff = Math.abs(r1 - r2) * randomInt(3, 6);
+        const total = (r1 + r2) * (diff / Math.abs(r1 - r2));
+        return {
+          question: `The ratio of boys to girls in a classroom is ${r1}:${r2}. If there are ${diff} more boys than girls, how many students are in the class?`,
+          correct: Math.round(total).toString(),
+          options: [
+            `${Math.round(total * 0.8)}`,
+            `${Math.round(total * 1.2)}`,
+            Math.round(total).toString(),
+            `${Math.round(total * 1.5)}`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const n = randomInt(10, 20);
+        const a = randomInt(5, 15);
+        const d = randomInt(2, 8);
+        const sum = (n/2) * (2*a + (n-1)*d);
+        return {
+          question: `Find the sum of the first ${n} terms of the arithmetic series: ${a} + ${a+d} + ${a+2*d} + ...`,
+          correct: Math.round(sum).toString(),
+          options: [
+            `${Math.round(sum * 0.9)}`,
+            `${Math.round(sum * 1.1)}`,
+            Math.round(sum).toString(),
+            `${a * n}`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const l = randomInt(150, 250);
+        const t = randomInt(6, 12);
+        const speed = (l/t) * 3.6;
+        return {
+          question: `A train of length ${l} meters passes a telegraph pole in ${t} seconds. What is the speed of the train in km/h?`,
+          correct: `${speed.toFixed(1)} km/h`,
+          options: [
+            `${(speed * 0.8).toFixed(1)} km/h`,
+            `${(speed * 1.2).toFixed(1)} km/h`,
+            `${speed.toFixed(1)} km/h`,
+            `${(l/t * 2.237).toFixed(1)} km/h`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const p = randomInt(5000, 15000);
+        const r = randomInt(8, 15);
+        const n = randomInt(2, 5);
+        const ci = p * Math.pow(1 + r/100, n) - p;
+        return {
+          question: `Calculate the compound interest on ₹${p} at ${r}% per annum for ${n} years, compounded annually.`,
+          correct: `₹${Math.round(ci)}`,
+          options: [
+            `₹${Math.round(ci * 0.9)}`,
+            `₹${Math.round(ci * 1.1)}`,
+            `₹${Math.round(ci)}`,
+            `₹${Math.round((p * r * n)/100)}`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const a = randomInt(1, 5);
+        const b = randomInt(-10, 10);
+        const c = randomInt(-8, 8);
+        const discriminant = b*b - 4*a*c;
+        const nature = discriminant > 0 ? "Real and distinct" : 
+                      discriminant === 0 ? "Real and equal" : "Complex";
+        return {
+          question: `For the quadratic equation ${a}x² ${b >= 0 ? '+' : ''}${b}x ${c >= 0 ? '+' : ''}${c} = 0, what is the nature of its roots?`,
+          correct: nature,
+          options: [
+            "Real and distinct",
+            "Real and equal",
+            "Complex",
+            "No real roots"
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const r = randomInt(7, 15);
+        const area = Math.PI * r * r;
+        return {
+          question: `A circular garden has a radius of ${r} meters. What is the area of the garden?`,
+          correct: `${area.toFixed(2)} m²`,
+          options: [
+            `${(area * 0.95).toFixed(2)} m²`,
+            `${(area * 1.05).toFixed(2)} m²`,
+            `${area.toFixed(2)} m²`,
+            `${(2 * Math.PI * r).toFixed(2)} m²`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const n = randomInt(7, 10);
+        const k = randomInt(2, 4);
+        const ways = factorial(n - k + 1) * factorial(k);
+        return {
+          question: `In how many ways can ${n} different books be arranged on a shelf if ${k} particular books must always be together?`,
+          correct: Math.round(ways).toString(),
+          options: [
+            `${Math.round(ways * 0.8)}`,
+            `${Math.round(ways * 1.2)}`,
+            Math.round(ways).toString(),
+            `${factorial(n)}`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const p = randomInt(8000, 12000);
+        const q = randomInt(8000, 12000);
+        const r1 = randomInt(9, 12);
+        const r2 = randomInt(9, 12);
+        const si = (p * r1 * 2) / 100;
+        const ci = q * Math.pow(1 + r2/100, 2) - q;
+        const diff = Math.abs(si - ci);
+        return {
+          question: `Mr. X invests ₹${p} at ${r1}% simple interest and ₹${q} at ${r2}% compound interest. After 2 years, what is the difference between the two interests?`,
+          correct: `₹${Math.round(diff)}`,
+          options: [
+            `₹${Math.round(diff * 0.9)}`,
+            `₹${Math.round(diff * 1.1)}`,
+            `₹${Math.round(diff)}`,
+            `₹${Math.round((p * r1 * 2)/100 + (q * r2 * 2)/100)}`
+          ]
+        };
+      }
+    },
+    {
+      generate: () => {
+        const a = 0.3010; // log10(2)
+        const b = 0.4771; // log10(3)
+        const log72 = 3*a + 2*b;
+        return {
+          question: "If log₁₀2 = 0.3010 and log₁₀3 = 0.4771, what is the value of log₁₀72?",
+          correct: log72.toFixed(4),
+          options: [
+            "1.8572",
+            "1.7321",
+            log72.toFixed(4),
+            "1.9542"
+          ]
+        };
+      }
+    }
+  ];
+
+  // Logical Reasoning Questions (12 unique)
+  const logicalQuestions = [
+    {
+      question: "If all software engineers are logical thinkers, and some logical thinkers are good at mathematics, which conclusion must be true?",
+      correct: "Some software engineers may be good at mathematics",
+      options: [
+        "All software engineers are good at mathematics",
+        "No software engineers are good at mathematics",
+        "Some software engineers may be good at mathematics",
+        "All logical thinkers are software engineers"
+      ]
+    },
+    {
+      question: "Which number should come next in the sequence: 2, 6, 12, 20, 30, ?",
+      correct: "42",
+      options: ["36", "40", "42", "44"]
+    },
+    {
+      question: "Point A is 5km north of Point B. Point B is 3km east of Point C. In which direction is Point A from Point C?",
+      correct: "North-East",
+      options: ["North-East", "South-West", "North-West", "South-East"]
+    },
+    {
+      question: "If in a certain code language, CAT is written as 3120 and DOG is written as 4157, how would you write RAT in the same code?",
+      correct: "18120",
+      options: ["18119", "18120", "18121", "19120"]
+    },
+    {
+      question: "Find the odd one out: Square, Circle, Triangle, Rectangle",
+      correct: "Circle",
+      options: ["Square", "Circle", "Triangle", "Rectangle"]
+    },
+    {
+      question: "Complete the analogy: Doctor is to Hospital as Teacher is to _____",
+      correct: "School",
+      options: ["Classroom", "School", "Students", "Education"]
+    },
+    {
+      question: "Based on the statement: 'All successful entrepreneurs take calculated risks. Some risk-takers are innovative.' Which conclusion logically follows?",
+      correct: "Some successful entrepreneurs may be innovative",
+      options: [
+        "All innovative people are entrepreneurs",
+        "No entrepreneurs are innovative",
+        "Some successful entrepreneurs may be innovative",
+        "All risk-takers are successful"
+      ]
+    },
+    {
+      question: "If 'No managers are programmers' and 'Some programmers are creative', what must be true?",
+      correct: "Some creative people are not managers",
+      options: [
+        "All creative people are programmers",
+        "No creative people are managers",
+        "Some creative people are not managers",
+        "All managers are creative"
+      ]
+    },
+    {
+      question: "Arrange these events in logical order: 1. Interview 2. Job Offer 3. Resume Submission 4. Selection Process 5. Application",
+      correct: "5,3,1,4,2",
+      options: [
+        "5,3,1,4,2",
+        "3,5,1,4,2",
+        "5,1,3,4,2",
+        "1,3,5,4,2"
+      ]
+    },
+    {
+      question: "Which is the strongest argument for implementing flexible work hours?",
+      correct: "Increases employee satisfaction and productivity",
+      options: [
+        "Everyone likes sleeping late",
+        "It reduces office space costs",
+        "Increases employee satisfaction and productivity",
+        "Managers have less work"
+      ]
+    },
+    {
+      question: "If RED is coded as 27 (R=18, E=5, D=4: 18+5+4=27) and BLUE is coded as 40, how is GREEN coded using the same pattern?",
+      correct: "49",
+      options: ["45", "49", "52", "56"]
+    },
+    {
+      question: "Which pattern does not belong with the others: △△○, □□△, ○○□, △△△",
+      correct: "△△△",
+      options: ["△△○", "□□△", "○○□", "△△△"]
+    }
+  ];
+
+  // Verbal Ability Questions (12 unique)
+  const verbalQuestions = [
+    {
+      question: "Choose the most appropriate word: The team's ______ efforts led to the successful completion of the project ahead of schedule.",
+      correct: "diligent",
+      options: ["diligent", "lazy", "casual", "apathetic"]
+    },
+    {
+      question: "Identify the grammatical error: 'The committee members has reached a unanimous decision on the matter.'",
+      correct: "has reached",
+      options: ["The committee", "members has", "has reached", "a unanimous decision"]
+    },
+    {
+      question: "What is the central theme of a passage discussing the impact of artificial intelligence on job markets?",
+      correct: "AI creates new opportunities while disrupting traditional roles",
+      options: [
+        "AI will eliminate all human jobs",
+        "AI has no significant impact",
+        "AI creates new opportunities while disrupting traditional roles",
+        "Only manual labor is affected by AI"
+      ]
+    },
+    {
+      question: "Which word is most similar in meaning to 'Ubiquitous'?",
+      correct: "Omnipresent",
+      options: ["Rare", "Omnipresent", "Hidden", "Temporary"]
+    },
+    {
+      question: "Rearrange these sentences to form a coherent paragraph: A. Consequently, employee productivity increased significantly. B. The company introduced flexible working hours. C. This change addressed work-life balance concerns. D. Initially, there was some resistance from management.",
+      correct: "D,B,C,A",
+      options: ["B,C,D,A", "D,B,C,A", "A,B,C,D", "C,D,B,A"]
+    },
+    {
+      question: "Choose the correctly spelled word:",
+      correct: "Entrepreneur",
+      options: ["Enterpreneur", "Entrepreneur", "Entreprenuer", "Enterprenuer"]
+    },
+    {
+      question: "Select the most appropriate idiom: 'After months of preparation, the startup finally ______ when they secured their first major client.'",
+      correct: "got off the ground",
+      options: ["bit the bullet", "got off the ground", "beat around the bush", "spilled the beans"]
+    },
+    {
+      question: "What is the author's tone in an article criticizing excessive social media use?",
+      correct: "Concerned and cautionary",
+      options: ["Joyful and celebratory", "Concerned and cautionary", "Indifferent and neutral", "Sarcastic and mocking"]
+    },
+    {
+      question: "Which option best summarizes an argument about renewable energy adoption?",
+      correct: "Government incentives combined with technological advances accelerate renewable energy transition",
+      options: [
+        "Renewable energy is too expensive to implement",
+        "Only solar power is worth investing in",
+        "Government incentives combined with technological advances accelerate renewable energy transition",
+        "Traditional energy sources will always dominate"
+      ]
+    },
+    {
+      question: "Choose the most formal alternative to: 'We need to finish this report quickly.'",
+      correct: "We must complete this report expeditiously",
+      options: [
+        "We gotta wrap up this report fast",
+        "We need to hurry up with this report",
+        "We must complete this report expeditiously",
+        "Let's get this report done quick"
+      ]
+    },
+    {
+      question: "Identify the sentence with correct parallel structure:",
+      correct: "The manager praised the team for their dedication, hard work, and innovative solutions",
+      options: [
+        "The manager praised the team for their dedication, working hard, and innovative solutions",
+        "The manager praised the team for dedication, their hard work, and coming up with innovative solutions",
+        "The manager praised the team for their dedication, hard work, and innovative solutions",
+        "The manager praised the team for being dedicated, hard work, and innovative"
+      ]
+    },
+    {
+      question: "Which word is an antonym of 'Ephemeral'?",
+      correct: "Permanent",
+      options: ["Temporary", "Brief", "Permanent", "Fleeting"]
+    }
+  ];
+
+  // Technical Core Questions (12 unique)
+  const technicalQuestions = [
+    {
+      question: "What occurs during a context switch in an operating system?",
+      correct: "The CPU saves the state of the current process and loads the state of the next process",
+      options: [
+        "The operating system restarts",
+        "All memory is cleared",
+        "The CPU saves the state of the current process and loads the state of the next process",
+        "The hard drive is formatted"
+      ]
+    },
+    {
+      question: "Explain the concept of polymorphism in Object-Oriented Programming with an example:",
+      correct: "The same method name can have different implementations in parent and child classes",
+      options: [
+        "Creating multiple objects from the same class",
+        "The same method name can have different implementations in parent and child classes",
+        "Hiding implementation details from the user",
+        "Combining data and methods into a single unit"
+      ]
+    },
+    {
+      question: "Compare TCP and UDP protocols in terms of reliability:",
+      correct: "TCP provides reliable, ordered delivery with acknowledgment; UDP is faster but unreliable",
+      options: [
+        "Both are equally reliable",
+        "TCP is unreliable; UDP is reliable",
+        "TCP provides reliable, ordered delivery with acknowledgment; UDP is faster but unreliable",
+        "Neither protocol is reliable"
+      ]
+    },
+    {
+      question: "What is the primary purpose of DNS (Domain Name System) in computer networks?",
+      correct: "To translate domain names into IP addresses",
+      options: [
+        "To encrypt internet communications",
+        "To translate domain names into IP addresses",
+        "To manage network hardware",
+        "To control internet speed"
+      ]
+    },
+    {
+      question: "How does Dijkstra's algorithm find the shortest path in a graph?",
+      correct: "Uses a greedy approach with a priority queue to explore nodes by minimum distance",
+      options: [
+        "Randomly selects paths until the shortest is found",
+        "Uses brute force to check all possible paths",
+        "Uses a greedy approach with a priority queue to explore nodes by minimum distance",
+        "Uses genetic algorithms to evolve the best path"
+      ]
+    },
+    {
+      question: "What do the ACID properties ensure in database transactions?",
+      correct: "Atomicity, Consistency, Isolation, and Durability for reliable transactions",
+      options: [
+        "Availability, Consistency, Integrity, and Durability",
+        "Atomicity, Consistency, Isolation, and Durability for reliable transactions",
+        "Accuracy, Completeness, Integrity, and Durability",
+        "Atomicity, Concurrency, Isolation, and Durability"
+      ]
+    },
+    {
+      question: "Explain the MVC (Model-View-Controller) architectural pattern and its benefits:",
+      correct: "Separates application into Model (data), View (UI), and Controller (logic) for maintainability",
+      options: [
+        "Combines all application logic into a single component",
+        "Only used for frontend development",
+        "Separates application into Model (data), View (UI), and Controller (logic) for maintainability",
+        "A database-only architecture"
+      ]
+    },
+    {
+      question: "What causes a deadlock in operating systems and how can it be prevented?",
+      correct: "Circular wait condition; prevention methods include resource ordering and timeout mechanisms",
+      options: [
+        "Insufficient memory; add more RAM",
+        "Circular wait condition; prevention methods include resource ordering and timeout mechanisms",
+        "Too many processes; reduce process count",
+        "Network issues; improve bandwidth"
+      ]
+    },
+    {
+      question: "How does caching improve system performance in web applications?",
+      correct: "Reduces database load by storing frequently accessed data in memory",
+      options: [
+        "Increases memory usage unnecessarily",
+        "Slows down response time",
+        "Reduces database load by storing frequently accessed data in memory",
+        "Eliminates the need for databases entirely"
+      ]
+    },
+    {
+      question: "What are the trade-offs between microservices and monolithic architectures?",
+      correct: "Microservices offer scalability and independence but add complexity; monoliths are simpler but harder to scale",
+      options: [
+        "Microservices are always better than monoliths",
+        "Monoliths are always better than microservices",
+        "Microservices offer scalability and independence but add complexity; monoliths are simpler but harder to scale",
+        "There are no significant differences between them"
+      ]
+    },
+    {
+      question: "What is virtualization and what are its primary benefits in cloud computing?",
+      correct: "Creating virtual versions of resources; improves utilization, isolation, and flexibility",
+      options: [
+        "Making software run faster",
+        "Creating virtual versions of resources; improves utilization, isolation, and flexibility",
+        "Reducing security measures",
+        "Increasing hardware costs"
+      ]
+    },
+    {
+      question: "How does garbage collection work in languages like Java and what problem does it solve?",
+      correct: "Automatically reclaims memory from unused objects, preventing memory leaks",
+      options: [
+        "Manually deletes unused variables",
+        "Automatically reclaims memory from unused objects, preventing memory leaks",
+        "Increases memory usage for better performance",
+        "Only works with array data structures"
+      ]
+    }
+  ];
+
+  // Coding Concepts Questions (12 unique)
+  const codingQuestions = [
+    {
+      question: "What is the worst-case time complexity of merge sort for an array of n elements?",
+      correct: "O(n log n)",
+      options: ["O(n)", "O(n²)", "O(log n)", "O(n log n)"]
+    },
+    {
+      question: "How would you optimize a recursive function that calculates Fibonacci numbers to avoid exponential time complexity?",
+      correct: "Use memoization (top-down) or dynamic programming (bottom-up)",
+      options: [
+        "Increase recursion depth limit",
+        "Use memoization (top-down) or dynamic programming (bottom-up)",
+        "Convert to iterative with multiple loops",
+        "Use global variables to store results"
+      ]
+    },
+    {
+      question: "Write pseudocode for binary search algorithm:",
+      correct: "While low ≤ high: mid = (low+high)/2; if arr[mid]==target return mid; else adjust low or high",
+      options: [
+        "Check each element sequentially until found",
+        "Sort the array first, then check middle",
+        "While low ≤ high: mid = (low+high)/2; if arr[mid]==target return mid; else adjust low or high",
+        "Use hash table to store all elements"
+      ]
+    },
+    {
+      question: "Which data structure is most efficient for implementing an LRU (Least Recently Used) cache?",
+      correct: "Hash map combined with doubly linked list",
+      options: [
+        "Array",
+        "Stack",
+        "Hash map combined with doubly linked list",
+        "Binary search tree"
+      ]
+    },
+    {
+      question: "Explain the optimal approach for solving the 'Two Sum' problem (find two numbers that add to target):",
+      correct: "Use a hash map to store numbers and check for complement in O(n) time",
+      options: [
+        "Check all pairs using nested loops O(n²)",
+        "Sort array and use two pointers O(n log n)",
+        "Use a hash map to store numbers and check for complement in O(n) time",
+        "Use recursion with backtracking"
+      ]
+    },
+    {
+      question: "What edge cases should be considered when implementing a function to check if a string is a palindrome?",
+      correct: "Empty string, single character, case sensitivity, spaces, punctuation, and Unicode characters",
+      options: [
+        "Only uppercase letters matter",
+        "Empty string, single character, case sensitivity, spaces, punctuation, and Unicode characters",
+        "Only alphanumeric characters",
+        "Only strings with even length"
+      ]
+    },
+    {
+      question: "How does quicksort perform on an already sorted array without proper pivot selection?",
+      correct: "Degenerates to O(n²) time complexity due to unbalanced partitions",
+      options: [
+        "Performs in O(n) time",
+        "Degenerates to O(n²) time complexity due to unbalanced partitions",
+        "Always runs in O(n log n) time",
+        "Faster than merge sort on sorted arrays"
+      ]
+    },
+    {
+      question: "Compare Depth-First Search (DFS) and Breadth-First Search (BFS) for graph traversal:",
+      correct: "DFS uses stack/recursion, good for path finding; BFS uses queue, good for shortest path",
+      options: [
+        "DFS is always better than BFS",
+        "BFS is always better than DFS",
+        "DFS uses stack/recursion, good for path finding; BFS uses queue, good for shortest path",
+        "Both are identical in time and space complexity"
+      ]
+    },
+    {
+      question: "What is the recurrence relation for the Tower of Hanoi problem with n disks?",
+      correct: "T(n) = 2T(n-1) + 1",
+      options: [
+        "T(n) = T(n-1) + n",
+        "T(n) = 2T(n-1) + 1",
+        "T(n) = T(n/2) + 1",
+        "T(n) = nT(n-1)"
+      ]
+    },
+    {
+      question: "How would you modify binary search to work on a rotated sorted array?",
+      correct: "Find pivot point first, then search in the appropriate sorted half",
+      options: [
+        "Sort the array first, then do regular binary search",
+        "Find pivot point first, then search in the appropriate sorted half",
+        "Use linear search instead",
+        "Convert to hash table for O(1) lookup"
+      ]
+    },
+    {
+      question: "What is tail recursion and why is it optimized by compilers?",
+      correct: "Recursive call is the last operation; compiler can reuse stack frame for efficiency",
+      options: [
+        "Recursive call is the first operation",
+        "Recursive call is the last operation; compiler can reuse stack frame for efficiency",
+        "Multiple recursive calls in the same function",
+        "Recursion without base case"
+      ]
+    },
+    {
+      question: "How does dynamic programming solve problems with overlapping subproblems?",
+      correct: "Stores results of subproblems in a table/memo to avoid redundant computations",
+      options: [
+        "Solves each subproblem repeatedly",
+        "Stores results of subproblems in a table/memo to avoid redundant computations",
+        "Uses random selection of subproblems",
+        "Divides problem but doesn't combine solutions"
+      ]
+    }
+  ];
+
+  // Data Structures Questions (12 unique)
+  const dsQuestions = [
+    {
+      question: "When would you choose a hash table over a binary search tree for storing data?",
+      correct: "When you need O(1) average-case lookups and don't need ordered traversal",
+      options: [
+        "Always choose hash table",
+        "Always choose binary search tree",
+        "When you need O(1) average-case lookups and don't need ordered traversal",
+        "When you need to maintain data in sorted order"
+      ]
+    },
+    {
+      question: "How does insertion work in a red-black tree to maintain balance?",
+      correct: "Insert as in BST, then recolor and rotate nodes to maintain red-black properties",
+      options: [
+        "Insert randomly and rebalance later",
+        "Insert as in BST, then recolor and rotate nodes to maintain red-black properties",
+        "Only insert at leaf nodes without rebalancing",
+        "Rebuild entire tree after each insertion"
+      ]
+    },
+    {
+      question: "What is the space complexity of a trie data structure storing n words with average length l?",
+      correct: "O(n*l) in worst case, but can be optimized with compression",
+      options: ["O(n)", "O(l)", "O(n*l) in worst case, but can be optimized with compression", "O(1)"]
+    },
+    {
+      question: "Implement the enqueue operation for a circular queue with fixed size:",
+      correct: "Check if queue is full, add element at rear, update rear = (rear+1)%size",
+      options: [
+        "Always add at front and shift all elements",
+        "Check if queue is full, add element at rear, update rear = (rear+1)%size",
+        "Remove oldest element first, then add new element",
+        "Double the size if queue is full"
+      ]
+    },
+    {
+      question: "What are the advantages of linked lists over arrays?",
+      correct: "Dynamic size, efficient insertions/deletions at any position, no wasted memory",
+      options: [
+        "Better cache locality",
+        "Random access to elements",
+        "Dynamic size, efficient insertions/deletions at any position, no wasted memory",
+        "Fixed size for memory efficiency"
+      ]
+    },
+    {
+      question: "How does separate chaining handle collisions in hash tables?",
+      correct: "Uses linked lists at each bucket to store multiple key-value pairs with same hash",
+      options: [
+        "Ignores collisions and overwrites data",
+        "Reduces hash table size",
+        "Uses linked lists at each bucket to store multiple key-value pairs with same hash",
+        "Uses only perfect hash functions to avoid collisions"
+      ]
+    },
+    {
+      question: "Explain rotation operations in AVL trees for maintaining balance:",
+      correct: "Left, right, left-right, and right-left rotations based on balance factors",
+      options: [
+        "Only left rotations are needed",
+        "Only right rotations are needed",
+        "Left, right, left-right, and right-left rotations based on balance factors",
+        "No rotations are necessary in AVL trees"
+      ]
+    },
+    {
+      question: "What is the traversal order for Breadth-First Search (BFS) on a complete binary tree?",
+      correct: "Level by level from root to leaves",
+      options: [
+        "Root, left subtree, right subtree",
+        "Left subtree, root, right subtree",
+        "Level by level from root to leaves",
+        "Right subtree, left subtree, root"
+      ]
+    },
+    {
+      question: "How can you find the kth smallest element in a Binary Search Tree efficiently?",
+      correct: "In-order traversal while maintaining a counter",
+      options: [
+        "Sort all elements and pick kth",
+        "In-order traversal while maintaining a counter",
+        "Random selection until kth smallest is found",
+        "Post-order traversal with recursion"
+      ]
+    },
+    {
+      question: "What probabilistic balancing mechanism does a skip list use?",
+      correct: "Randomized levels with coin flipping to determine node heights",
+      options: [
+        "Rotation operations like balanced trees",
+        "Randomized levels with coin flipping to determine node heights",
+        "Periodic rebuilding of entire structure",
+        "No balancing mechanism"
+      ]
+    },
+    {
+      question: "When is a segment tree data structure particularly useful?",
+      correct: "For range queries and updates on arrays with O(log n) operations",
+      options: [
+        "Simple element lookup in unsorted data",
+        "For range queries and updates on arrays with O(log n) operations",
+        "Storing sorted data for binary search",
+        "Implementing key-value dictionaries"
+      ]
+    },
+    {
+      question: "How does the union-find (disjoint set) data structure work with path compression?",
+      correct: "Forest of trees where find operation compresses paths to root for efficiency",
+      options: [
+        "Uses arrays for direct access",
+        "Uses linked lists for connectivity",
+        "Forest of trees where find operation compresses paths to root for efficiency",
+        "Uses hash tables for quick lookups"
+      ]
+    }
+  ];
+
+  // System Design Questions (12 unique)
+  const systemDesignQuestions = [
+    {
+      question: "How would you design a URL shortening service like TinyURL that handles millions of requests?",
+      correct: "Generate unique short codes, use distributed database, implement caching with LRU, use CDN for scaling",
+      options: [
+        "Store all URLs in a single text file",
+        "Generate unique short codes, use distributed database, implement caching with LRU, use CDN for scaling",
+        "Use sequential numbers for all URLs",
+        "No database needed, just compute hashes"
+      ]
+    },
+    {
+      question: "What components would you need for a real-time chat application supporting thousands of concurrent users?",
+      correct: "WebSocket servers, message queue, distributed database, caching layer, load balancer",
+      options: [
+        "Only a single database server",
+        "WebSocket servers, message queue, distributed database, caching layer, load balancer",
+        "Static HTML files only",
+        "Email server for notifications"
+      ]
+    },
+    {
+      question: "How would you ensure strong consistency in a globally distributed database system?",
+      correct: "Use consensus protocols like Paxos or Raft, implement quorum-based reads/writes",
+      options: [
+        "Use a single master database",
+        "Use consensus protocols like Paxos or Raft, implement quorum-based reads/writes",
+        "No consistency guarantees needed",
+        "Randomly select nodes for each operation"
+      ]
+    },
+    {
+      question: "Which database would you choose for storing and querying time-series data (like IoT sensor readings) and why?",
+      correct: "Time-series database like InfluxDB for efficient time-based queries and compression",
+      options: [
+        "Traditional relational database",
+        "Time-series database like InfluxDB for efficient time-based queries and compression",
+        "Document database like MongoDB",
+        "Graph database like Neo4j"
+      ]
+    },
+    {
+      question: "How would you handle server failures in a microservices architecture to maintain availability?",
+      correct: "Implement circuit breakers, retries with exponential backoff, fallback mechanisms, health checks",
+      options: [
+        "Restart all services manually",
+        "Implement circuit breakers, retries with exponential backoff, fallback mechanisms, health checks",
+        "Ignore failures and continue operation",
+        "Use only a single service to avoid failures"
+      ]
+    },
+    {
+      question: "What caching strategy would you implement for a social media news feed serving millions of users?",
+      correct: "Cache personalized feeds with TTL, use write-through cache for new posts, implement cache warming",
+      options: [
+        "Cache everything permanently",
+        "Cache personalized feeds with TTL, use write-through cache for new posts, implement cache warming",
+        "No caching needed for feeds",
+        "Cache only user profile pictures"
+      ]
+    },
+    {
+      question: "How can you scale database read operations horizontally to handle increased traffic?",
+      correct: "Use read replicas with asynchronous replication, implement connection pooling, monitor replication lag",
+      options: [
+        "Buy a bigger single server",
+        "Use read replicas with asynchronous replication, implement connection pooling, monitor replication lag",
+        "Scale vertically only",
+        "Use in-memory databases exclusively"
+      ]
+    },
+    {
+      question: "What key metrics would you monitor for an API gateway handling millions of requests per day?",
+      correct: "Request rate, latency (p50, p95, p99), error rate, throughput, availability, concurrent connections",
+      options: [
+        "Only CPU usage",
+        "Request rate, latency (p50, p95, p99), error rate, throughput, availability, concurrent connections",
+        "Only memory usage",
+        "Only disk space"
+      ]
+    },
+    {
+      question: "How would you design a RESTful API for an e-commerce product catalog with filtering, sorting, and pagination?",
+      correct: "Resource-based endpoints, proper HTTP methods, versioning, query parameters for filters, pagination with cursors",
+      options: [
+        "Single endpoint returning all data",
+        "Resource-based endpoints, proper HTTP methods, versioning, query parameters for filters, pagination with cursors",
+        "Only GET requests for all operations",
+        "No authentication required"
+      ]
+    },
+    {
+      question: "What security measures would you implement for a user authentication system handling sensitive financial data?",
+      correct: "Hashed passwords with salt, JWT tokens with short expiry, rate limiting, 2FA, security headers, audit logging",
+      options: [
+        "Store passwords in plain text",
+        "Hashed passwords with salt, JWT tokens with short expiry, rate limiting, 2FA, security headers, audit logging",
+        "No encryption needed",
+        "Single password for all users"
+      ]
+    },
+    {
+      question: "How would you implement search functionality for an e-commerce site with millions of products?",
+      correct: "Use Elasticsearch with indexing, analyzers, relevance scoring, autocomplete, and faceted search",
+      options: [
+        "Database LIKE queries on product names",
+        "Use Elasticsearch with indexing, analyzers, relevance scoring, autocomplete, and faceted search",
+        "Manual search by category only",
+        "No search functionality needed"
+      ]
+    },
+    {
+      question: "What architecture would you use for handling large file uploads (like videos) at scale?",
+      correct: "CDN for distribution, object storage (S3), async processing queues, resumable uploads, progress tracking",
+      options: [
+        "Store files directly in database",
+        "CDN for distribution, object storage (S3), async processing queues, resumable uploads, progress tracking",
+        "Email files as attachments",
+        "Local server storage only"
+      ]
+    }
+  ];
+
+  // Behavioral Questions (12 unique)
+  const behavioralQuestions = [
+    {
+      question: "Describe a situation where you had to meet a tight deadline. How did you prioritize tasks and ensure timely delivery?",
+      correct: "Prioritized critical path items, communicated with stakeholders, broke down work, delivered incrementally",
+      options: [
+        "Worked 24/7 without breaks",
+        "Prioritized critical path items, communicated with stakeholders, broke down work, delivered incrementally",
+        "Asked for deadline extension immediately",
+        "Focused only on easy tasks first"
+      ]
+    },
+    {
+      question: "How would you handle a disagreement with a team member about technical implementation?",
+      correct: "Listen to their perspective, present data/evidence, find common ground, seek compromise or third opinion",
+      options: [
+        "Insist on your approach forcefully",
+        "Complain to manager without discussion",
+        "Listen to their perspective, present data/evidence, find common ground, seek compromise or third opinion",
+        "Avoid the person and implement your way"
+      ]
+    },
+    {
+      question: "What is your approach to learning a new technology or framework quickly for a project requirement?",
+      correct: "Hands-on projects, official documentation, online courses, community forums, pair programming",
+      options: [
+        "Read one book cover to cover",
+        "Hands-on projects, official documentation, online courses, community forums, pair programming",
+        "Wait for formal training",
+        "Trial and error without guidance"
+      ]
+    },
+    {
+      question: "Tell me about a time you took initiative to improve a process or system without being asked.",
+      correct: "Identified inefficiency, researched solutions, proposed improvement, implemented, measured results",
+      options: [
+        "Always waited for instructions",
+        "Identified inefficiency, researched solutions, proposed improvement, implemented, measured results",
+        "Complained about problems without solutions",
+        "Implemented changes without approval"
+      ]
+    },
+    {
+      question: "How do you prioritize when you receive multiple urgent requests from different stakeholders simultaneously?",
+      correct: "Assess business impact and urgency, communicate timelines transparently, negotiate priorities if needed",
+      options: [
+        "Work on easiest tasks first",
+        "Assess business impact and urgency, communicate timelines transparently, negotiate priorities if needed",
+        "Try to do everything at once",
+        "Choose randomly which to work on"
+      ]
+    },
+    {
+      question: "What would you do if you discovered a critical security vulnerability in production code?",
+      correct: "Assess severity, contain if possible, notify security team, fix urgently, deploy patch, conduct root cause analysis",
+      options: [
+        "Ignore it and hope no one notices",
+        "Assess severity, contain if possible, notify security team, fix urgently, deploy patch, conduct root cause analysis",
+        "Wait for next scheduled release",
+        "Blame the original developer"
+      ]
+    },
+    {
+      question: "How do you ensure code quality and maintainability in a team development environment?",
+      correct: "Code reviews, automated testing, coding standards, continuous integration, documentation, pair programming",
+      options: [
+        "No reviews needed if code works",
+        "Code reviews, automated testing, coding standards, continuous integration, documentation, pair programming",
+        "Only manager reviews code",
+        "Test only after deployment"
+      ]
+    },
+    {
+      question: "Describe your leadership style when guiding a team through a challenging project.",
+      correct: "Servant leadership: empower team members, remove obstacles, provide guidance, lead by example",
+      options: [
+        "Command and control style",
+        "Servant leadership: empower team members, remove obstacles, provide guidance, lead by example",
+        "Hands-off, let team figure everything out",
+        "Delegate all responsibilities"
+      ]
+    },
+    {
+      question: "How do you handle constructive criticism or feedback that you initially disagree with?",
+      correct: "Listen actively without defensiveness, ask clarifying questions, reflect objectively, respond professionally",
+      options: [
+        "Argue immediately to defend your position",
+        "Listen actively without defensiveness, ask clarifying questions, reflect objectively, respond professionally",
+        "Ignore the feedback completely",
+        "Take it personally and get upset"
+      ]
+    },
+    {
+      question: "Where do you see your career progressing in the next 3-5 years?",
+      correct: "Technical leadership role, mentoring junior developers, contributing to architecture, driving innovation",
+      options: [
+        "Same position with same responsibilities",
+        "Technical leadership role, mentoring junior developers, contributing to architecture, driving innovation",
+        "Completely different industry",
+        "Management only, no technical work"
+      ]
+    },
+    {
+      question: "How do you stay motivated when working on repetitive or mundane tasks?",
+      correct: "Find patterns to automate, set small milestones, focus on bigger purpose, take regular breaks",
+      options: [
+        "Complain constantly to colleagues",
+        "Find patterns to automate, set small milestones, focus on bigger purpose, take regular breaks",
+        "Skip the tasks when possible",
+        "Do them quickly without attention to detail"
+      ]
+    },
+    {
+      question: "What do you believe are the most important qualities for effective teamwork?",
+      correct: "Clear communication, mutual respect, shared goals, psychological safety, accountability, adaptability",
+      options: [
+        "Only technical skills matter",
+        "Clear communication, mutual respect, shared goals, psychological safety, accountability, adaptability",
+        "Everyone thinking alike",
+        "Working independently in silos"
+      ]
+    }
+  ];
+
+  // Map categories to their question sets
+  const categoryQuestions = {
+    "Quantitative Aptitude": quantitativeQuestions,
+    "Logical Reasoning": logicalQuestions,
+    "Verbal Ability": verbalQuestions,
+    "Technical Core": technicalQuestions,
+    "Coding Concepts": codingQuestions,
+    "Data Structures": dsQuestions,
+    "System Design": systemDesignQuestions,
+    "Behavioral": behavioralQuestions
   };
 
-  const questionTemplates = {
-    "Quantitative Aptitude": [
-      "If {x} increases by {y}%, then decreases by {z}%, what's the net change?",
-      "A can complete work in {a} days, B in {b} days. Together they complete in?",
-      "What is the probability of {scenario} given {condition}?",
-      "The ratio of {x} to {y} is {r1}:{r2}. If {z} is added, what's new ratio?",
-      "Find the sum of series: {series}",
-      "A train of length {l}m passes a pole in {t} seconds. Speed is?",
-      "The compound interest on {p} at {r}% for {n} years is?",
-      "Solve for x: {equation}",
-      "Area of a {shape} with dimensions {d1} and {d2} is?",
-      "In how many ways can {items} be arranged under {condition}?"
-    ],
-    "Logical Reasoning": [
-      "If {statement1}, and {statement2}, then what follows?",
-      "Which pattern continues the sequence: {sequence}?",
-      "A is north of B, B is east of C. What's A relative to C?",
-      "Decode the pattern: {code}",
-      "Find the odd one out: {options}",
-      "Complete the analogy: {analogy}",
-      "Based on the passage, which conclusion is valid?",
-      "What must be true if {condition} holds?",
-      "Arrange these in logical order: {items}",
-      "Which argument is strongest for {scenario}?"
-    ],
-    "Verbal Ability": [
-      "Choose the most appropriate word for the blank: {sentence}",
-      "Identify the grammatical error in: {sentence}",
-      "What is the main idea of the passage?",
-      "Which word is closest in meaning to {word}?",
-      "Rearrange the sentences to form a coherent paragraph",
-      "Choose the correctly spelled word",
-      "Select the most suitable idiom for the situation",
-      "What tone does the author adopt in the passage?",
-      "Which option best summarizes the argument?",
-      "Choose the most formal alternative"
-    ],
-    "Technical Core": [
-      "What happens during {process} in {system}?",
-      "Explain the concept of {concept} with example",
-      "Compare {tech1} and {tech2} in terms of {aspect}",
-      "What is the purpose of {protocol} in {context}?",
-      "How does {algorithm} achieve {goal}?",
-      "What are the ACID properties in DBMS?",
-      "Explain {architecture} pattern with benefits",
-      "What causes {issue} in {system} and how to resolve?",
-      "How does {technology} improve {metric}?",
-      "What are the trade-offs in {design_choice}?"
-    ],
-    "Coding Concepts": [
-      "What is time complexity of {algorithm} for {input}?",
-      "How would you optimize {code} for {constraint}?",
-      "Write pseudocode for {problem}",
-      "What data structure is best for {scenario} and why?",
-      "Explain the approach for solving {problem}",
-      "What edge cases should be considered for {problem}?",
-      "How does {algorithm} handle {case}?",
-      "Compare {algo1} and {algo2} for {use_case}",
-      "What is the recurrence relation for {problem}?",
-      "How to modify {algorithm} for {requirement}?"
-    ],
-    "Data Structures": [
-      "When to use {ds1} vs {ds2}?",
-      "How does {operation} work in {ds}?",
-      "What is the space complexity of {ds} storing {n} elements?",
-      "Implement {operation} for {ds}",
-      "What are the advantages of {ds} over {alternative}?",
-      "How to handle {issue} in {ds} implementation?",
-      "Explain the rotation operation in {tree_type}",
-      "What is the traversal order for {pattern}?",
-      "How to find {element} in {ds} efficiently?",
-      "What balancing mechanism does {ds} use?"
-    ],
-    "System Design": [
-      "How would you design {system} for {scale} users?",
-      "What components are needed for {feature}?",
-      "How to ensure {requirement} in distributed system?",
-      "What database would you choose for {data_type} and why?",
-      "How to handle {failure} in {system}?",
-      "What caching strategy for {access_pattern}?",
-      "How to scale {component} horizontally?",
-      "What monitoring metrics for {service}?",
-      "How to design API for {functionality}?",
-      "What security measures for {data_sensitivity}?"
-    ],
-    "Behavioral": [
-      "Describe a time when you {scenario}",
-      "How would you handle {situation} with {people}?",
-      "What is your approach to {task} under {constraint}?",
-      "Tell me about a project where you {action}",
-      "How do you prioritize {multiple_tasks}?",
-      "What would you do if {problem} occurred?",
-      "How do you ensure {quality} in your work?",
-      "Describe your leadership style with example",
-      "How do you handle feedback that you disagree with?",
-      "Where do you see yourself in {years} years?"
-    ]
+  // Get topics for each category
+  const getTopicForCategory = (category: string, index: number): string => {
+    const topics: Record<string, string[]> = {
+      "Quantitative Aptitude": ["Percentage", "Work & Time", "Probability", "Ratio", "Series", "Speed", "Interest", "Algebra", "Geometry", "Permutations", "Investments", "Logarithms"],
+      "Logical Reasoning": ["Syllogism", "Series", "Direction", "Coding", "Classification", "Analogy", "Deduction", "Logical Order", "Arguments", "Pattern", "Shapes", "Relations"],
+      "Verbal Ability": ["Vocabulary", "Grammar", "Comprehension", "Synonyms", "Paragraph", "Spelling", "Idioms", "Tone", "Summary", "Formality", "Parallelism", "Antonyms"],
+      "Technical Core": ["OS", "OOP", "Networking", "DNS", "Algorithms", "DBMS", "Architecture", "Deadlock", "Caching", "Microservices", "Virtualization", "Memory"],
+      "Coding Concepts": ["Complexity", "Optimization", "Search", "Data Structures", "Problem Solving", "Edge Cases", "Sorting", "Graphs", "Recurrence", "Search Modified", "Recursion", "DP"],
+      "Data Structures": ["Comparison", "Balanced Trees", "Trie", "Queue", "Linked List", "Hashing", "AVL", "Traversal", "BST", "Skip List", "Segment Tree", "Union-Find"],
+      "System Design": ["URL Shortener", "Chat App", "Consistency", "Database", "Failure", "Caching", "Scaling", "Monitoring", "API Design", "Security", "Search", "File Upload"],
+      "Behavioral": ["Deadline", "Conflict", "Learning", "Initiative", "Prioritization", "Problem", "Quality", "Leadership", "Feedback", "Career", "Motivation", "Teamwork"]
+    };
+    
+    return topics[category]?.[index % topics[category].length] || category.split(' ')[0] + " Concepts";
   };
 
-  // Generate completely unique questions
   let questionId = 0;
   
   for (let t = 0; t < TOTAL_TESTS; t++) {
@@ -259,136 +1376,61 @@ const generatePlacementDataset = (): TestModule[] => {
     for (let q = 0; q < QUESTIONS_PER_TEST; q++) {
       questionId++;
       const cat = categories[q % categories.length];
-      const topic = topics[cat][(t + q) % topics[cat].length];
+      const questionSet = categoryQuestions[cat];
+      const questionIndex = q % questionSet.length;
+      
       const difficulty = company.difficulty === "Advanced" ? "Advanced" : 
                         company.difficulty === "Hard" ? "Hard" : "Medium";
       
-      // Generate unique values for each question
-      const uniqueValues = {
-        x: Math.floor(Math.random() * 100) + 10,
-        y: Math.floor(Math.random() * 30) + 5,
-        z: Math.floor(Math.random() * 25) + 5,
-        a: Math.floor(Math.random() * 20) + 5,
-        b: Math.floor(Math.random() * 25) + 5,
-        r1: Math.floor(Math.random() * 5) + 1,
-        r2: Math.floor(Math.random() * 5) + 1,
-        l: Math.floor(Math.random() * 300) + 100,
-        t: Math.floor(Math.random() * 20) + 5,
-        p: Math.floor(Math.random() * 10000) + 1000,
-        r: Math.floor(Math.random() * 15) + 5,
-        n: Math.floor(Math.random() * 5) + 1
-      };
-
-      // Select template and fill with unique values
-      const template = questionTemplates[cat][q % questionTemplates[cat].length];
-      let questionText = template;
+      let questionData;
       
-      // Replace placeholders with unique values
-      Object.entries(uniqueValues).forEach(([key, value]) => {
-        questionText = questionText.replace(`{${key}}`, value.toString());
-      });
-
-      // Generate unique options for each question
-      const options: string[] = [];
-      const correctIndex = Math.floor(Math.random() * 4);
-      
-      switch(cat) {
-        case "Quantitative Aptitude":
-          const base = Math.floor(Math.random() * 100) + 50;
-          options.push(
-            `${(base * 0.85).toFixed(2)}`,
-            `${(base * 1.15).toFixed(2)}`,
-            `${(base * 0.92).toFixed(2)}`,
-            `${(base * 1.08).toFixed(2)}`
-          );
-          options[correctIndex] = `${(base * 1.05).toFixed(2)}`;
-          break;
-          
-        case "Logical Reasoning":
-          options.push(
-            "North-East",
-            "South-West", 
-            "North-West",
-            "South-East"
-          );
-          options[correctIndex] = "North-East";
-          break;
-          
-        case "Verbal Ability":
-          options.push(
-            "Ubiquitous",
-            "Pervasive",
-            "Omnipresent",
-            "Widespread"
-          );
-          options[correctIndex] = "Ubiquitous";
-          break;
-          
-        case "Technical Core":
-          options.push(
-            "Deadlock Prevention",
-            "Memory Management",
-            "Process Synchronization",
-            "CPU Scheduling"
-          );
-          options[correctIndex] = "Process Synchronization";
-          break;
-          
-        case "Coding Concepts":
-          options.push(
-            "O(n log n)",
-            "O(n²)",
-            "O(n)",
-            "O(log n)"
-          );
-          options[correctIndex] = "O(n log n)";
-          break;
-          
-        case "Data Structures":
-          options.push(
-            "Hash Table",
-            "Binary Search Tree",
-            "Linked List",
-            "Array"
-          );
-          options[correctIndex] = "Hash Table";
-          break;
-          
-        case "System Design":
-          options.push(
-            "Consistent Hashing",
-            "Load Balancing",
-            "Database Sharding",
-            "Caching Layer"
-          );
-          options[correctIndex] = "Consistent Hashing";
-          break;
-          
-        case "Behavioral":
-          options.push(
-            "Analyze the problem thoroughly before proposing solutions",
-            "Delegate the issue to a team member",
-            "Immediately implement the most obvious solution",
-            "Escalate to management immediately"
-          );
-          options[correctIndex] = "Analyze the problem thoroughly before proposing solutions";
-          break;
+      // Handle quantitative questions specially since they need generation
+      if (cat === "Quantitative Aptitude") {
+        questionData = quantitativeQuestions[questionIndex].generate();
+      } else {
+        // For other categories, use static questions
+        questionData = questionSet[questionIndex];
       }
-
+      
+      const correctIndex = Math.floor(Math.random() * 4);
+      const options = [...questionData.options];
+      
+      // Ensure correct answer is at correctIndex
+      const correctAnswer = questionData.correct;
+      const currentCorrectIndex = options.indexOf(correctAnswer);
+      
+      if (currentCorrectIndex !== -1 && currentCorrectIndex !== correctIndex) {
+        // Swap positions
+        [options[currentCorrectIndex], options[correctIndex]] = 
+        [options[correctIndex], options[currentCorrectIndex]];
+      }
+      
+      // Get topic
+      const topic = getTopicForCategory(cat, questionIndex);
+      
       questions.push({
         id: questionId,
         category: cat,
         topic: topic,
         difficulty: difficulty,
-        question: `${questionText} (Test ${t + 1}, Q${q + 1})`,
+        question: `${questionData.question} (Test ${t + 1}, Q${q + 1})`,
         options: options,
         correctAnswer: correctIndex,
-        explanation: `This question tests your understanding of ${topic}. The correct approach involves ${cat === "Quantitative Aptitude" ? "applying the appropriate formula" : cat === "Logical Reasoning" ? "identifying the logical pattern" : cat === "Technical Core" ? "understanding the core concept" : "analyzing the scenario correctly"}. Always consider alternative approaches and validate your answer.`,
+        explanation: `This question tests your understanding of ${cat.toLowerCase()} concepts. ${
+          cat === "Quantitative Aptitude" ? "Apply appropriate mathematical formulas and verify your calculations." :
+          cat === "Logical Reasoning" ? "Identify patterns and logical relationships between elements." :
+          cat === "Verbal Ability" ? "Consider context, grammar rules, and vocabulary nuances." :
+          cat === "Technical Core" ? "Understand fundamental computer science principles and their practical applications." :
+          cat === "Coding Concepts" ? "Analyze time/space complexity and choose appropriate algorithm design patterns." :
+          cat === "Data Structures" ? "Select optimal data structures based on operation requirements and constraints." :
+          cat === "System Design" ? "Consider scalability, reliability, security, and trade-offs in architectural decisions." :
+          "Reflect on professional experiences and demonstrate effective soft skills and problem-solving approaches."
+        } Always consider alternative approaches and validate your reasoning.`,
         tips: [
           "Read the question carefully before attempting",
-          "Eliminate obviously wrong options first",
-          "Manage your time effectively",
-          "Double-check calculations if applicable"
+          "Eliminate obviously incorrect options first",
+          "Manage your time effectively across questions",
+          "Double-check calculations and logic before finalizing"
         ]
       });
     }
@@ -399,7 +1441,7 @@ const generatePlacementDataset = (): TestModule[] => {
       company: company.name,
       icon: company.icon,
       estimatedTime: company.time,
-      passingScore: Math.floor(QUESTIONS_PER_TEST * 0.75), // 75% passing
+      passingScore: Math.floor(QUESTIONS_PER_TEST * 0.75),
       questions,
       tags: [...company.tags, categories[t % categories.length]],
       difficultyLevel: company.difficulty
@@ -412,14 +1454,13 @@ const generatePlacementDataset = (): TestModule[] => {
 const PLACEMENT_DATASET = generatePlacementDataset();
 
 const PlacementMockEngine = () => {
-  // --- ENHANCED CORE STATE ---
+  // --- CORE STATE ---
   const [activeTestId, setActiveTestId] = useState<number | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [flagged, setFlagged] = useState<number[]>([]);
-  const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes
+  const [timeLeft, setTimeLeft] = useState(3600);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [proctorLogs, setProctorLogs] = useState<string[]>(["[SYSTEM] Proctor initialized"]);
   const [performance, setPerformance] = useState<PerformanceMetrics>({
     speed: 0,
     accuracy: 0,
@@ -427,15 +1468,14 @@ const PlacementMockEngine = () => {
     categoryBreakdown: {}
   });
   const [testHistory, setTestHistory] = useState<Array<{testId: number, score: number, date: string, company: string}>>([]);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
-  // --- ENHANCED TOOL STATE ---
+  // --- TOOL STATE ---
   const [showCalc, setShowCalc] = useState(false);
   const [showPad, setShowPad] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [scratchContent, setScratchContent] = useState("");
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
@@ -444,17 +1484,183 @@ const PlacementMockEngine = () => {
     PLACEMENT_DATASET.find(m => m.id === activeTestId), [activeTestId]
   );
 
+  // --- AUTHENTICATION & SESSION MANAGEMENT ---
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // Check for regular user session
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            
+            // If it's a demo/login user with token
+            if (parsedUser?.token) {
+              // Verify token by making a simple API call
+              try {
+                const response = await apiService.getCurrentUser();
+                if (response.success) {
+                  setUser(response.data);
+                  await loadUserData();
+                  return;
+                }
+              } catch (error) {
+                console.log('Token validation failed, checking guest session');
+              }
+            }
+            
+            // If token validation failed but we have user data, use it
+            if (parsedUser?.user || parsedUser?.name || parsedUser?.email) {
+              setUser(parsedUser.user || parsedUser);
+              await loadUserData();
+              return;
+            }
+          } catch (parseError) {
+            console.error('Failed to parse user data:', parseError);
+          }
+        }
+        
+        // Check for guest session
+        const guestData = localStorage.getItem('guest_session');
+        if (guestData) {
+          try {
+            const guestSession = JSON.parse(guestData);
+            const sessionAge = Date.now() - (guestSession.timestamp || 0);
+            // Guest session valid for 24 hours
+            if (sessionAge < 24 * 60 * 60 * 1000) {
+              setUser({ guest: true, ...guestSession });
+              await loadGuestHistory();
+              return;
+            }
+          } catch (guestError) {
+            console.error('Failed to parse guest session:', guestError);
+          }
+        }
+        
+        // No valid session found
+        setUser(null);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for storage changes (e.g., logout from another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user' && !e.newValue) {
+        setUser(null);
+      }
+      if (e.key === 'guest_session' && !e.newValue) {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const handleGuestMode = () => {
+    const guestSession = {
+      guest: true,
+      timestamp: Date.now(),
+      sessionId: `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+    
+    localStorage.setItem('guest_session', JSON.stringify(guestSession));
+    setUser(guestSession);
+    toast.success("Continuing as guest. Progress will be saved locally for 24 hours.");
+  };
+
+  const handleLogout = () => {
+    apiService.logout();
+    setUser(null);
+    setActiveTestId(null);
+    toast.success("Logged out successfully");
+  };
+
+  const loadGuestHistory = async () => {
+    try {
+      const history = localStorage.getItem('test_history');
+      if (history) {
+        setTestHistory(JSON.parse(history));
+      }
+    } catch (error) {
+      console.error('Error loading guest history:', error);
+    }
+  };
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      
+      // If guest user, load from localStorage
+      if (user?.guest) {
+        await loadGuestHistory();
+        setLoading(false);
+        return;
+      }
+
+      // Load test history from backend for authenticated users
+      const testSessionsResponse = await apiService.getUserTestSessions({
+        limit: 50,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+
+      if (testSessionsResponse.success) {
+        const sessions = testSessionsResponse.sessions || [];
+        const history = sessions.map((session: any) => ({
+          testId: parseInt(session.testId) || session.id || 0,
+          score: session.rawScore || 0,
+          date: session.createdAt || new Date().toISOString(),
+          company: session.testName || session.testCompany || "Unknown Test"
+        }));
+        setTestHistory(history);
+        localStorage.setItem('test_history', JSON.stringify(history));
+      }
+
+      // Load performance analytics
+      const analyticsResponse = await apiService.getPerformanceAnalytics('30d');
+      if (analyticsResponse.success && analyticsResponse.data) {
+        const data = analyticsResponse.data;
+        setPerformance({
+          speed: data.timeAnalysis?.averageTimePerQuestion || 0,
+          accuracy: data.averageAccuracy || 0,
+          consistency: 0,
+          categoryBreakdown: data.categoryPerformance || {}
+        });
+      }
+
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      toast.error('Failed to load user data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- PERSISTENCE & RECOVERY ---
   useEffect(() => {
     const backup = localStorage.getItem('placement_state_v1');
     const history = localStorage.getItem('test_history');
     if (backup && !activeTestId) {
-      const data = JSON.parse(backup);
-      setActiveTestId(data.activeTestId);
-      setAnswers(data.answers);
-      setTimeLeft(data.timeLeft);
-      setTestHistory(history ? JSON.parse(history) : []);
-      toast.success("Previous session restored");
+      try {
+        const data = JSON.parse(backup);
+        setActiveTestId(data.activeTestId);
+        setAnswers(data.answers || {});
+        setTimeLeft(data.timeLeft || 3600);
+        setTestHistory(history ? JSON.parse(history) : []);
+        toast.success("Previous session restored");
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+      }
     }
   }, []);
 
@@ -468,41 +1674,119 @@ const PlacementMockEngine = () => {
         currentIdx 
       }));
     }
-  }, [answers, timeLeft, activeTestId, flagged, currentIdx]);
+  }, [answers, timeLeft, activeTestId, flagged, currentIdx, isSubmitted]);
+
+  // --- BACKEND INTEGRATION FUNCTIONS ---
+  const recordTestStart = async () => {
+    if (!activeTest || !user || user?.guest) return;
+    
+    try {
+      await apiService.recordTestStart(
+        activeTest.id,
+        activeTest.title,
+        activeTest.tags[0] || 'General',
+        activeTest.difficultyLevel
+      );
+    } catch (error) {
+      console.error('Failed to record test start:', error);
+    }
+  };
+
+  const recordQuestionAnswer = async (questionId: number, answerIndex: number) => {
+    if (!activeTest || !user || user?.guest) return;
+    
+    const currentQ = activeTest.questions.find(q => q.id === questionId);
+    if (!currentQ) return;
+
+    try {
+      await apiService.recordQuestionAnswered(
+        activeTest.id,
+        questionId,
+        currentIdx,
+        answerIndex,
+        currentQ.correctAnswer,
+        30,
+        currentQ.category,
+        currentQ.difficulty
+      );
+    } catch (error) {
+      console.error('Failed to record question answer:', error);
+    }
+  };
+
+  const recordQuestionFlag = async (questionId: number) => {
+    if (!activeTest || !user || user?.guest) return;
+    
+    try {
+      await apiService.recordQuestionFlagged(activeTest.id, questionId);
+    } catch (error) {
+      console.error('Failed to record question flag:', error);
+    }
+  };
+
+  const recordTestCompletion = async (score: number) => {
+    if (!activeTest || !user || user?.guest) return;
+
+    const testSessionData = {
+      testId: activeTest.id.toString(),
+      testName: activeTest.title,
+      testCategory: activeTest.tags[0] || 'General',
+      testDifficulty: activeTest.difficultyLevel,
+      testTags: activeTest.tags,
+      status: 'completed',
+      totalDuration: 3600 - timeLeft,
+      questions: activeTest.questions.map((q, index) => ({
+        questionId: q.id.toString(),
+        questionIndex: index,
+        questionText: q.question.substring(0, 200),
+        category: q.category,
+        difficulty: q.difficulty,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        userAnswer: answers[q.id],
+        timeSpent: 45,
+        isFlagged: flagged.includes(q.id),
+        isReviewed: false,
+        isCorrect: answers[q.id] === q.correctAnswer
+      })),
+      performance: {
+        totalQuestions: QUESTIONS_PER_TEST,
+        answeredQuestions: Object.keys(answers).length,
+        correctAnswers: score,
+        incorrectAnswers: Object.keys(answers).length - score,
+        skippedQuestions: QUESTIONS_PER_TEST - Object.keys(answers).length,
+        flaggedQuestions: flagged.length,
+        reviewedQuestions: 0,
+        averageTimePerQuestion: (3600 - timeLeft) / Object.keys(answers).length || 0,
+        accuracy: (score / QUESTIONS_PER_TEST) * 100,
+      },
+      rawScore: score,
+      normalizedScore: (score / QUESTIONS_PER_TEST) * 100,
+      passingScore: activeTest.passingScore,
+      isPassed: score >= activeTest.passingScore,
+      environment: {
+        browser: navigator.userAgent,
+        os: navigator.platform,
+        device: 'desktop',
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        networkType: 'unknown',
+        ipAddress: 'unknown'
+      }
+    };
+
+    try {
+      await apiService.recordTestCompleted(testSessionData);
+      toast.success("Test results saved to your profile!");
+    } catch (error) {
+      console.error('Failed to record test completion:', error);
+      toast.error("Failed to save test results, but test completed locally");
+    }
+  };
 
   // --- PROCTORING SYSTEM ---
   useEffect(() => {
     if (!activeTestId || isSubmitted) return;
 
-    const logEvent = (msg: string, type: "info" | "warning" | "violation" = "info") => {
-      const prefix = type === "violation" ? "🔴 VIOLATION" : type === "warning" ? "🟡 WARNING" : "🔵 INFO";
-      const logMsg = `${prefix} ${new Date().toLocaleTimeString()}: ${msg}`;
-      setProctorLogs(prev => [...prev.slice(-9), logMsg]);
-      
-      if (type === "violation") {
-        toast.error(`PROCTOR: ${msg}`, { duration: 5000 });
-      } else if (type === "warning") {
-        toast.warning(msg, { duration: 3000 });
-      }
-    };
-
-    const handleBlur = () => logEvent("Tab switched - focus lost", "violation");
-    const handleContext = (e: MouseEvent) => {
-      e.preventDefault();
-      logEvent("Right-click disabled", "warning");
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'x')) {
-        e.preventDefault();
-        logEvent("Copy/paste disabled", "violation");
-      }
-      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
-        e.preventDefault();
-        logEvent("Developer tools blocked", "violation");
-      }
-    };
-
-    // Timer
     const ticker = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 0) {
@@ -511,7 +1795,6 @@ const PlacementMockEngine = () => {
           return 0;
         }
         
-        // Performance tracking
         if (prev % 30 === 0) {
           const answered = Object.keys(answers).length;
           const speed = answered / (3600 - prev) * 60;
@@ -525,18 +1808,15 @@ const PlacementMockEngine = () => {
       });
     }, 1000);
 
-    // Event listeners
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('contextmenu', handleContext);
-    window.addEventListener('keydown', handleKeyDown);
+    // Record test start when test begins
+    if (user && !user.guest) {
+      recordTestStart();
+    }
 
     return () => {
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('contextmenu', handleContext);
-      window.removeEventListener('keydown', handleKeyDown);
       clearInterval(ticker);
     };
-  }, [activeTestId, isSubmitted, answers]);
+  }, [activeTestId, isSubmitted, answers, user]);
 
   // --- PERFORMANCE TRACKING ---
   useEffect(() => {
@@ -568,7 +1848,7 @@ const PlacementMockEngine = () => {
     }
   }, [answers, activeTest]);
 
-  const finalizeTest = () => {
+  const finalizeTest = async () => {
     setIsSubmitted(true);
     const score = activeTest?.questions.reduce((acc, q) => acc + (answers[q.id] === q.correctAnswer ? 1 : 0), 0) || 0;
     const newHistory = [...testHistory, {
@@ -580,6 +1860,11 @@ const PlacementMockEngine = () => {
     setTestHistory(newHistory);
     localStorage.setItem('test_history', JSON.stringify(newHistory));
     localStorage.removeItem('placement_state_v1');
+    
+    // Record test completion to backend for authenticated users
+    if (user && !user.guest) {
+      await recordTestCompletion(score);
+    }
     
     toast.success(`Test Complete! Score: ${score}/${QUESTIONS_PER_TEST}`, {
       duration: 5000,
@@ -603,7 +1888,6 @@ const PlacementMockEngine = () => {
     setCurrentIdx(0);
     setTimeLeft(3600);
     setIsSubmitted(false);
-    setProctorLogs(["[SYSTEM] Test reset"]);
     localStorage.removeItem('placement_state_v1');
     toast.info("Test reset to initial state");
   };
@@ -617,7 +1901,106 @@ const PlacementMockEngine = () => {
     return matchesSearch && matchesTags && matchesDifficulty;
   });
 
-  // --- MAIN RENDER ---
+  // --- AUTH UI COMPONENTS ---
+  const AuthPrompt = () => (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gray-900 border border-gray-700 p-8 rounded-2xl max-w-md w-full"
+      >
+        <div className="text-center mb-6">
+          <Lock className="w-16 h-16 text-cyan-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
+          <p className="text-gray-400">Login or register to track your progress and save test results</p>
+        </div>
+        
+        <div className="space-y-4">
+          <button
+            onClick={async () => {
+              try {
+                setLoading(true);
+                const response = await apiService.demoLogin();
+                if (response.success) {
+                  setUser(response.data.user || response.data);
+                  localStorage.setItem('user', JSON.stringify(response.data));
+                  localStorage.removeItem('guest_session');
+                  toast.success("Demo login successful!");
+                  await loadUserData();
+                } else {
+                  toast.error(response.message || "Demo login failed");
+                }
+              } catch (error) {
+                toast.error("Demo login failed. Please try again.");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="w-full px-6 py-3 bg-cyan-600 text-white font-bold rounded-xl hover:bg-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Try Demo Account"}
+          </button>
+          
+          <div className="text-center text-gray-500 text-sm">
+            <p>Demo account has limited features</p>
+            <p className="mt-2">
+              <a href="/login" className="text-cyan-400 hover:text-cyan-300">
+                Full login
+              </a> • 
+              <a href="/register" className="text-cyan-400 hover:text-cyan-300 ml-2">
+                Register
+              </a>
+            </p>
+          </div>
+        </div>
+        
+        <button
+          onClick={handleGuestMode}
+          className="w-full mt-4 px-6 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-all"
+        >
+          Continue as Guest
+        </button>
+      </motion.div>
+    </div>
+  );
+
+  // --- LOADING SCREEN ---
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- AUTH CHECK ---
+  if (!user && !loading) {
+    return (
+      <>
+        <AuthPrompt />
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-6 font-sans">
+          <div className="max-w-7xl mx-auto">
+            <header className="mb-10">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-5xl font-bold">
+                    <span className="text-cyan-400">Placement</span> Prep Pro
+                  </h1>
+                  <p className="text-gray-400 mt-2">Master your placement interviews with 336 unique questions</p>
+                </div>
+              </div>
+            </header>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // --- MAIN DASHBOARD RENDER ---
   if (!activeTestId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-6 font-sans">
@@ -629,14 +2012,36 @@ const PlacementMockEngine = () => {
                 <h1 className="text-5xl font-bold">
                   <span className="text-cyan-400">Placement</span> Prep Pro
                 </h1>
-                <p className="text-gray-400 mt-2">Master your placement interviews with 336 unique questions</p>
+                <p className="text-gray-400 mt-2">
+                  {user?.guest ? "Guest Mode - Progress saved locally for 24 hours" : `Welcome, ${user?.name || user?.email || 'User'}!`}
+                </p>
               </div>
               <div className="flex items-center gap-3">
+                {!user?.guest && (
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const response = await apiService.getPerformanceAnalytics('30d');
+                        if (response.success) {
+                          setShowStats(true);
+                        }
+                      } catch (error) {
+                        toast.error("Failed to load analytics");
+                      }
+                    }}
+                    className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700"
+                  >
+                    <BarChart3 size={20} />
+                  </button>
+                )}
                 <button onClick={() => setShowStats(true)} className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700">
-                  <BarChart3 size={20} />
-                </button>
-                <button onClick={() => setShowSettings(true)} className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700">
                   <Settings size={20} />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600/30"
+                >
+                  {user?.guest ? "Exit Guest Mode" : "Logout"}
                 </button>
               </div>
             </div>
@@ -661,6 +2066,12 @@ const PlacementMockEngine = () => {
                 <Target size={16} />
                 <span>{PLACEMENT_DATASET.length} Mock Tests</span>
               </div>
+              {!user?.guest && performance.accuracy > 0 && (
+                <div className="flex items-center gap-2">
+                  <Award size={16} />
+                  <span>Accuracy: {Math.round(performance.accuracy)}%</span>
+                </div>
+              )}
             </div>
           </header>
 
@@ -689,7 +2100,11 @@ const PlacementMockEngine = () => {
                   <option value="Advanced">Advanced</option>
                 </select>
                 <button
-                  onClick={() => setSelectedTags([])}
+                  onClick={() => {
+                    setSelectedTags([]);
+                    setSearchQuery("");
+                    setDifficultyFilter("all");
+                  }}
                   className="px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl hover:bg-gray-800"
                 >
                   Clear Filters
@@ -724,7 +2139,7 @@ const PlacementMockEngine = () => {
                 key={test.id}
                 whileHover={{ scale: 1.02, y: -4 }}
                 onClick={() => setActiveTestId(test.id)}
-                className="p-6 rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900/50 to-black cursor-pointer group transition-all"
+                className="p-6 rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900/50 to-black cursor-pointer group transition-all relative"
               >
                 {/* Difficulty Badge */}
                 <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold ${
@@ -824,6 +2239,20 @@ const PlacementMockEngine = () => {
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Performance Summary */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-800/50 p-4 rounded-xl">
+                        <p className="text-sm text-gray-400 mb-1">Total Tests</p>
+                        <p className="text-2xl font-bold">{testHistory.length}</p>
+                      </div>
+                      <div className="bg-gray-800/50 p-4 rounded-xl">
+                        <p className="text-sm text-gray-400 mb-1">Average Score</p>
+                        <p className="text-2xl font-bold">
+                          {Math.round(testHistory.reduce((acc, t) => acc + t.score, 0) / testHistory.length)}/12
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -839,6 +2268,7 @@ const PlacementMockEngine = () => {
     );
   }
 
+  // --- TEST COMPLETE SCREEN ---
   if (isSubmitted && activeTest) {
     const score = activeTest.questions.reduce((acc, q) => acc + (answers[q.id] === q.correctAnswer ? 1 : 0), 0);
     const percentage = Math.round((score / QUESTIONS_PER_TEST) * 100);
@@ -854,9 +2284,12 @@ const PlacementMockEngine = () => {
           className="max-w-4xl w-full bg-gray-900 border border-gray-700 p-12 rounded-3xl shadow-2xl"
         >
           <div className="text-center mb-10">
-            <Award className="w-24 h-24 text-cyan-500 mx-auto mb-6" />
+            <AwardIcon className="w-24 h-24 text-cyan-500 mx-auto mb-6" />
             <h2 className="text-4xl font-bold mb-2">Test Complete!</h2>
             <p className="text-gray-400">{activeTest.company}</p>
+            {user?.guest && (
+              <p className="text-yellow-500 text-sm mt-2">⚠️ Guest mode: Results saved locally for 24 hours</p>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -876,7 +2309,11 @@ const PlacementMockEngine = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                setActiveTestId(null);
+                setIsSubmitted(false);
+                resetTest();
+              }}
               className="px-8 py-4 bg-cyan-600 text-white font-bold rounded-xl hover:bg-cyan-700 transition-all"
             >
               Take Another Test
@@ -887,12 +2324,24 @@ const PlacementMockEngine = () => {
             >
               View Analytics
             </button>
+            {user?.guest && (
+              <button 
+                onClick={() => {
+                  handleLogout();
+                  toast.success("Redirecting to login...");
+                }}
+                className="px-8 py-4 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-all"
+              >
+                Login to Save Progress
+              </button>
+            )}
           </div>
         </motion.div>
       </div>
     );
   }
 
+  // --- ACTIVE TEST SCREEN ---
   const currentQ = activeTest!.questions[currentIdx];
   const progress = ((currentIdx + 1) / QUESTIONS_PER_TEST) * 100;
 
@@ -902,7 +2351,11 @@ const PlacementMockEngine = () => {
       <nav className="h-16 border-b border-gray-800 px-6 flex justify-between items-center bg-gray-900/90 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => setActiveTestId(null)}
+            onClick={() => {
+              if (confirm('Are you sure you want to leave? Your progress will be saved.')) {
+                setActiveTestId(null);
+              }
+            }}
             className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700"
           >
             <Home size={20} />
@@ -921,8 +2374,17 @@ const PlacementMockEngine = () => {
             <Timer size={18} />
             <span className="text-xl font-mono font-bold">{formatTime(timeLeft)}</span>
           </div>
+          {user?.guest && (
+            <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm">
+              Guest Mode
+            </div>
+          )}
           <button 
-            onClick={finalizeTest}
+            onClick={() => {
+              if (confirm('Are you sure you want to submit the test?')) {
+                finalizeTest();
+              }
+            }}
             className="px-6 py-3 bg-cyan-600 text-white font-bold rounded-xl hover:bg-cyan-700 transition-all"
           >
             Submit Test
@@ -1057,7 +2519,12 @@ const PlacementMockEngine = () => {
                 {currentQ.options.map((opt, i) => (
                   <button 
                     key={i}
-                    onClick={() => setAnswers({...answers, [currentQ.id]: i})}
+                    onClick={() => {
+                      setAnswers({...answers, [currentQ.id]: i});
+                      if (user && !user.guest) {
+                        recordQuestionAnswer(currentQ.id, i);
+                      }
+                    }}
                     className={`w-full p-6 text-left rounded-xl border transition-all ${
                       answers[currentQ.id] === i 
                         ? 'bg-cyan-600/20 border-cyan-500 text-white shadow-lg' 
@@ -1110,7 +2577,18 @@ const PlacementMockEngine = () => {
               
               <div className="flex items-center gap-4">
                 <button 
-                  onClick={() => setFlagged(prev => prev.includes(currentQ.id) ? prev.filter(f => f !== currentQ.id) : [...prev, currentQ.id])}
+                  onClick={() => {
+                    const newFlagged = flagged.includes(currentQ.id) 
+                      ? flagged.filter(f => f !== currentQ.id) 
+                      : [...flagged, currentQ.id];
+                    setFlagged(newFlagged);
+                    
+                    if (user && !user.guest) {
+                      if (!flagged.includes(currentQ.id)) {
+                        recordQuestionFlag(currentQ.id);
+                      }
+                    }
+                  }}
                   className={`p-3 rounded-xl ${
                     flagged.includes(currentQ.id) 
                       ? 'bg-yellow-500/20 text-yellow-400' 
@@ -1120,7 +2598,11 @@ const PlacementMockEngine = () => {
                   <Flag size={18} />
                 </button>
                 <button 
-                  onClick={resetTest}
+                  onClick={() => {
+                    if (confirm('Are you sure you want to reset the test? All progress will be lost.')) {
+                      resetTest();
+                    }
+                  }}
                   className="px-4 py-3 bg-gray-800 rounded-xl hover:bg-gray-700 text-sm"
                 >
                   Reset Test
