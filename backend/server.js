@@ -1,18 +1,22 @@
 import express from "express";
 import cors from "cors";
 import compression from "compression";
-import rateLimit from "express-rate-limit";
-import authRoutes from "./routes/auth.routes.js";
-import profileRoutes from "./routes/profile.routes.js";
-import topicRoutes from "./routes/topic.routes.js";
-import problemRoutes from "./routes/problem.routes.js";
-import rankingRoutes from "./routes/ranking.routes.js";
-import errorHandler from "./middlewares/error.middleware.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Import routes
+import progressRoutes from "./routes/progressRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import homepageRoutes from "./routes/homepageRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 
 // Load environment variables
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 
@@ -21,27 +25,43 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// CORS
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    credentials: true,
-  })
-);
+// CORS Configuration
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:8080', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs for testing
-  message: {
-    success: false,
-    message: "Too many requests, please try again later."
-  },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+// Rate limiting middleware
+const rateLimit = new Map();
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_REQUESTS = 100;
+
+app.use((req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  
+  if (!rateLimit.has(ip)) {
+    rateLimit.set(ip, { count: 1, startTime: now });
+  } else {
+    const userData = rateLimit.get(ip);
+    
+    if (now - userData.startTime > WINDOW_MS) {
+      rateLimit.set(ip, { count: 1, startTime: now });
+    } else {
+      userData.count++;
+      if (userData.count > MAX_REQUESTS) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many requests, please try again later."
+        });
+      }
+    }
+  }
+
+  next();
 });
-
-app.use(limiter);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -53,55 +73,72 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Simple test routes (remove imports for now)
-app.get("/api/questions", (req, res) => {
+// Welcome route
+app.get("/", (req, res) => {
   res.json({
-    success: true,
-    questions: [
-      { id: 1, question: "Explain closure in JavaScript", difficulty: "Medium" },
-      { id: 2, question: "What is React virtual DOM?", difficulty: "Easy" }
-    ]
+    message: "🚀 Placement Prep Backend API",
+    endpoints: {
+      auth: {
+        register: "POST /api/auth/register",
+        login: "POST /api/auth/login",
+        demoLogin: "POST /api/auth/demo-login",
+        me: "GET /api/auth/me"
+      },
+      progress: {
+        getProgress: "GET /api/progress",
+        recordTest: "POST /api/progress/test",
+        updateSkill: "PUT /api/progress/skill",
+        analytics: "GET /api/progress/analytics"
+      },
+      dashboard: {
+        getDashboard: "GET /api/dashboard",
+        recordActivity: "POST /api/dashboard/activity",
+        platformStats: "GET /api/dashboard/platform-stats",
+        preferences: "PUT /api/dashboard/preferences"
+      },
+      homepage: {
+        stats: "GET /api/homepage/stats",
+        leaderboard: "GET /api/homepage/leaderboard",
+        mentorship: {
+          requests: "GET /api/homepage/mentorship/requests",
+          request: "POST /api/homepage/mentorship/request",
+          mentors: "GET /api/homepage/mentorship/mentors"
+        }
+      },
+      health: "GET /api/health"
+    }
   });
 });
 
-// Routes
+// API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/profile", profileRoutes);
-app.use("/api/topics", topicRoutes);
-app.use("/api/problems", problemRoutes);
-app.use("/api/rankings", rankingRoutes);
-app.get("/api/mock-tests", (req, res) => {
-  res.json({
-    success: true,
-    tests: [
-      { id: 1, name: "FAANG Mock Test", difficulty: "Hard" },
-      { id: 2, name: "DSA Basics", difficulty: "Medium" }
-    ]
+app.use("/api/progress", progressRoutes);
+app.use("/api/homepage", homepageRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+
+// Database connection
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/placement-prep";
+
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err.message);
   });
-});
-
-// Database connection (optional - you can start without DB first)
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
-    .then(() => {
-      console.log('✅ Connected to MongoDB');
-    })
-    .catch((err) => {
-      console.error('❌ MongoDB connection error:', err.message);
-    });
-} else {
-  console.log('⚠️  MONGODB_URI not set, running without database');
-}
 
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`📚 Questions: http://localhost:${PORT}/api/questions`);
-  console.log(`🧪 Mock Tests: http://localhost:${PORT}/api/mock-tests`);
+  console.log(`🌐 Home: http://localhost:${PORT}`);
+  console.log(`🩺 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
+  console.log(`📊 Progress API: http://localhost:${PORT}/api/progress`);
+  console.log(`📈 Dashboard API: http://localhost:${PORT}/api/dashboard`);
+  console.log(`🏠 Homepage API: http://localhost:${PORT}/api/homepage`);
+  console.log(`👤 Demo login: POST http://localhost:${PORT}/api/auth/demo-login`);
+  console.log(`📱 Frontend: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
 });
 
 // 404 handler
@@ -113,6 +150,17 @@ app.use("*", (req, res) => {
 });
 
 // Error handler
-app.use(errorHandler);
+app.use((err, req, res, next) => {
+  console.error('🔥 Error:', err.message);
+  
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  res.status(statusCode).json({
+    success: false,
+    message: message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
 
 export default app;
