@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Timer, CheckCircle2, ChevronRight, ChevronLeft, Flag, 
-  Maximize2, Calculator, Edit3, X, BarChart3, RefreshCcw, 
-  Home, Award, Zap, Brain, ShieldAlert, Terminal, Lock, 
-  Cpu, Database, Network, Globe, Code2, Layers, BookOpen,
-  Users, Cloud, Server, Code, GitBranch, Cctv, AlertTriangle,
-  Hash, Clock, TrendingUp, Filter, Search, Settings, Bell,
-  Download, Upload, Share2, Volume2, VolumeX, Eye, EyeOff,
-  Camera, Mic, MicOff, Wifi, WifiOff, Battery, BatteryCharging,
-  Briefcase, GraduationCap, Target, Star, Trophy, Medal,
-  Building, FileText, HelpCircle, Lightbulb, Puzzle
+  Calculator, Edit3, X, BarChart3, Home, Award, 
+  Users, Target, TrendingUp, Search, Settings, Lock,
+  Clock, Award as AwardIcon
 } from "lucide-react";
 import { toast } from "sonner";
+
+// --- API CONFIG ---
+const API_BASE_URL = import.meta.env?.VITE_API_URL || 
+                     import.meta.env?.REACT_APP_API_URL || 
+                     'http://localhost:5000/api';
 
 // --- TYPES & SYSTEM CONFIG ---
 const TOTAL_TESTS = 28;
@@ -48,6 +47,254 @@ interface PerformanceMetrics {
   consistency: number;
   categoryBreakdown: Record<string, number>;
 }
+
+// --- ENHANCED API SERVICE ---
+const apiService = {
+  // Get auth token from localStorage
+  getToken: () => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        return user?.token;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  },
+
+  // Get refresh token
+  getRefreshToken: () => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        return user?.refreshToken;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  },
+
+  // API request helper
+  request: async (endpoint: string, options: RequestInit = {}) => {
+    const token = apiService.getToken();
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
+      ...options.headers,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (response.status === 401) {
+        // Token expired, try to refresh
+        const newToken = await apiService.refreshToken();
+        if (newToken) {
+          // Retry with new token
+          headers['Authorization'] = `Bearer ${newToken}`;
+          const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          
+          if (!retryResponse.ok) {
+            const error = await retryResponse.json().catch(() => ({ message: 'Network error' }));
+            throw new Error(error.message || `HTTP ${retryResponse.status}`);
+          }
+          return await retryResponse.json();
+        }
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Network error' }));
+        throw new Error(error.message || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  },
+
+  // Token refresh method
+  refreshToken: async () => {
+    const refreshToken = apiService.getRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Update localStorage with new tokens
+        const currentUser = localStorage.getItem('user');
+        if (currentUser) {
+          const user = JSON.parse(currentUser);
+          user.token = data.data.token;
+          user.refreshToken = data.data.refreshToken;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+        return data.data.token;
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Clear invalid session
+      localStorage.removeItem('user');
+    }
+    return null;
+  },
+
+  // Auth methods
+  login: async (email: string, password: string) => {
+    const response = await apiService.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (response.success) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.removeItem('guest_session'); // Clear any guest session
+    }
+    return response;
+  },
+
+  register: async (name: string, email: string, password: string) => {
+    const response = await apiService.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+    });
+    if (response.success) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.removeItem('guest_session'); // Clear any guest session
+    }
+    return response;
+  },
+
+  demoLogin: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/demo-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Demo login failed');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        localStorage.setItem('user', JSON.stringify(data.data));
+        localStorage.removeItem('guest_session'); // Clear any guest session
+        return data;
+      }
+      throw new Error(data.message || 'Demo login failed');
+    } catch (error) {
+      console.error('Demo login error:', error);
+      throw error;
+    }
+  },
+
+  getCurrentUser: async () => {
+    return await apiService.request('/auth/me');
+  },
+
+  logout: () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('guest_session');
+    localStorage.removeItem('placement_state_v1');
+  },
+
+  // Test activities methods
+  recordTestStart: async (testId: number, testName: string, category: string, difficulty: string) => {
+    return await apiService.request('/activities/record', {
+      method: 'POST',
+      body: JSON.stringify({
+        activityType: 'test_started',
+        metadata: {
+          testId: testId.toString(),
+          testName,
+          testCategory: category,
+          testDifficulty: difficulty,
+          startTime: new Date().toISOString(),
+        },
+        tags: ['test', 'started', category.toLowerCase()],
+      }),
+    });
+  },
+
+  recordQuestionAnswered: async (testId: number, questionId: number, questionIndex: number, 
+                                 answerSelected: number, correctAnswer: number, 
+                                 timeSpent: number, category: string, difficulty: string) => {
+    return await apiService.request('/activities/record', {
+      method: 'POST',
+      body: JSON.stringify({
+        activityType: 'question_answered',
+        metadata: {
+          testId: testId.toString(),
+          questionId: questionId.toString(),
+          questionIndex,
+          answerSelected,
+          correctAnswer,
+          timeSpent,
+          category,
+          difficulty,
+          isCorrect: answerSelected === correctAnswer,
+        },
+        tags: ['question', 'answered', category.toLowerCase()],
+      }),
+    });
+  },
+
+  recordQuestionFlagged: async (testId: number, questionId: number) => {
+    return await apiService.request('/activities/record', {
+      method: 'POST',
+      body: JSON.stringify({
+        activityType: 'question_flagged',
+        metadata: {
+          testId: testId.toString(),
+          questionId: questionId.toString(),
+        },
+        tags: ['question', 'flagged'],
+      }),
+    });
+  },
+
+  recordTestCompleted: async (testSessionData: any) => {
+    return await apiService.request('/activities/test-session', {
+      method: 'POST',
+      body: JSON.stringify(testSessionData),
+    });
+  },
+
+  getUserTestSessions: async (filters = {}) => {
+    const queryParams = new URLSearchParams(filters).toString();
+    return await apiService.request(`/activities/test-sessions?${queryParams}`);
+  },
+
+  getPerformanceAnalytics: async (period = '30d') => {
+    return await apiService.request(`/activities/analytics?period=${period}`);
+  },
+};
 
 // --- COMPREHENSIVE PLACEMENT QUESTION GENERATOR ---
 const generatePlacementDataset = (): TestModule[] => {
@@ -249,7 +496,6 @@ const generatePlacementDataset = (): TestModule[] => {
     ]
   };
 
-  // Generate completely unique questions
   let questionId = 0;
   
   for (let t = 0; t < TOTAL_TESTS; t++) {
@@ -263,7 +509,6 @@ const generatePlacementDataset = (): TestModule[] => {
       const difficulty = company.difficulty === "Advanced" ? "Advanced" : 
                         company.difficulty === "Hard" ? "Hard" : "Medium";
       
-      // Generate unique values for each question
       const uniqueValues = {
         x: Math.floor(Math.random() * 100) + 10,
         y: Math.floor(Math.random() * 30) + 5,
@@ -279,16 +524,13 @@ const generatePlacementDataset = (): TestModule[] => {
         n: Math.floor(Math.random() * 5) + 1
       };
 
-      // Select template and fill with unique values
       const template = questionTemplates[cat][q % questionTemplates[cat].length];
       let questionText = template;
       
-      // Replace placeholders with unique values
       Object.entries(uniqueValues).forEach(([key, value]) => {
         questionText = questionText.replace(`{${key}}`, value.toString());
       });
 
-      // Generate unique options for each question
       const options: string[] = [];
       const correctIndex = Math.floor(Math.random() * 4);
       
@@ -399,7 +641,7 @@ const generatePlacementDataset = (): TestModule[] => {
       company: company.name,
       icon: company.icon,
       estimatedTime: company.time,
-      passingScore: Math.floor(QUESTIONS_PER_TEST * 0.75), // 75% passing
+      passingScore: Math.floor(QUESTIONS_PER_TEST * 0.75),
       questions,
       tags: [...company.tags, categories[t % categories.length]],
       difficultyLevel: company.difficulty
@@ -412,14 +654,13 @@ const generatePlacementDataset = (): TestModule[] => {
 const PLACEMENT_DATASET = generatePlacementDataset();
 
 const PlacementMockEngine = () => {
-  // --- ENHANCED CORE STATE ---
+  // --- CORE STATE ---
   const [activeTestId, setActiveTestId] = useState<number | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [flagged, setFlagged] = useState<number[]>([]);
-  const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes
+  const [timeLeft, setTimeLeft] = useState(3600);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [proctorLogs, setProctorLogs] = useState<string[]>(["[SYSTEM] Proctor initialized"]);
   const [performance, setPerformance] = useState<PerformanceMetrics>({
     speed: 0,
     accuracy: 0,
@@ -427,15 +668,14 @@ const PlacementMockEngine = () => {
     categoryBreakdown: {}
   });
   const [testHistory, setTestHistory] = useState<Array<{testId: number, score: number, date: string, company: string}>>([]);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
-  // --- ENHANCED TOOL STATE ---
+  // --- TOOL STATE ---
   const [showCalc, setShowCalc] = useState(false);
   const [showPad, setShowPad] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [scratchContent, setScratchContent] = useState("");
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
@@ -444,17 +684,183 @@ const PlacementMockEngine = () => {
     PLACEMENT_DATASET.find(m => m.id === activeTestId), [activeTestId]
   );
 
+  // --- AUTHENTICATION & SESSION MANAGEMENT ---
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // Check for regular user session
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            
+            // If it's a demo/login user with token
+            if (parsedUser?.token) {
+              // Verify token by making a simple API call
+              try {
+                const response = await apiService.getCurrentUser();
+                if (response.success) {
+                  setUser(response.data);
+                  await loadUserData();
+                  return;
+                }
+              } catch (error) {
+                console.log('Token validation failed, checking guest session');
+              }
+            }
+            
+            // If token validation failed but we have user data, use it
+            if (parsedUser?.user || parsedUser?.name || parsedUser?.email) {
+              setUser(parsedUser.user || parsedUser);
+              await loadUserData();
+              return;
+            }
+          } catch (parseError) {
+            console.error('Failed to parse user data:', parseError);
+          }
+        }
+        
+        // Check for guest session
+        const guestData = localStorage.getItem('guest_session');
+        if (guestData) {
+          try {
+            const guestSession = JSON.parse(guestData);
+            const sessionAge = Date.now() - (guestSession.timestamp || 0);
+            // Guest session valid for 24 hours
+            if (sessionAge < 24 * 60 * 60 * 1000) {
+              setUser({ guest: true, ...guestSession });
+              await loadGuestHistory();
+              return;
+            }
+          } catch (guestError) {
+            console.error('Failed to parse guest session:', guestError);
+          }
+        }
+        
+        // No valid session found
+        setUser(null);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for storage changes (e.g., logout from another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user' && !e.newValue) {
+        setUser(null);
+      }
+      if (e.key === 'guest_session' && !e.newValue) {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const handleGuestMode = () => {
+    const guestSession = {
+      guest: true,
+      timestamp: Date.now(),
+      sessionId: `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+    
+    localStorage.setItem('guest_session', JSON.stringify(guestSession));
+    setUser(guestSession);
+    toast.success("Continuing as guest. Progress will be saved locally for 24 hours.");
+  };
+
+  const handleLogout = () => {
+    apiService.logout();
+    setUser(null);
+    setActiveTestId(null);
+    toast.success("Logged out successfully");
+  };
+
+  const loadGuestHistory = async () => {
+    try {
+      const history = localStorage.getItem('test_history');
+      if (history) {
+        setTestHistory(JSON.parse(history));
+      }
+    } catch (error) {
+      console.error('Error loading guest history:', error);
+    }
+  };
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      
+      // If guest user, load from localStorage
+      if (user?.guest) {
+        await loadGuestHistory();
+        setLoading(false);
+        return;
+      }
+
+      // Load test history from backend for authenticated users
+      const testSessionsResponse = await apiService.getUserTestSessions({
+        limit: 50,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+
+      if (testSessionsResponse.success) {
+        const sessions = testSessionsResponse.sessions || [];
+        const history = sessions.map((session: any) => ({
+          testId: parseInt(session.testId) || session.id || 0,
+          score: session.rawScore || 0,
+          date: session.createdAt || new Date().toISOString(),
+          company: session.testName || session.testCompany || "Unknown Test"
+        }));
+        setTestHistory(history);
+        localStorage.setItem('test_history', JSON.stringify(history));
+      }
+
+      // Load performance analytics
+      const analyticsResponse = await apiService.getPerformanceAnalytics('30d');
+      if (analyticsResponse.success && analyticsResponse.data) {
+        const data = analyticsResponse.data;
+        setPerformance({
+          speed: data.timeAnalysis?.averageTimePerQuestion || 0,
+          accuracy: data.averageAccuracy || 0,
+          consistency: 0,
+          categoryBreakdown: data.categoryPerformance || {}
+        });
+      }
+
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      toast.error('Failed to load user data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- PERSISTENCE & RECOVERY ---
   useEffect(() => {
     const backup = localStorage.getItem('placement_state_v1');
     const history = localStorage.getItem('test_history');
     if (backup && !activeTestId) {
-      const data = JSON.parse(backup);
-      setActiveTestId(data.activeTestId);
-      setAnswers(data.answers);
-      setTimeLeft(data.timeLeft);
-      setTestHistory(history ? JSON.parse(history) : []);
-      toast.success("Previous session restored");
+      try {
+        const data = JSON.parse(backup);
+        setActiveTestId(data.activeTestId);
+        setAnswers(data.answers || {});
+        setTimeLeft(data.timeLeft || 3600);
+        setTestHistory(history ? JSON.parse(history) : []);
+        toast.success("Previous session restored");
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+      }
     }
   }, []);
 
@@ -468,41 +874,119 @@ const PlacementMockEngine = () => {
         currentIdx 
       }));
     }
-  }, [answers, timeLeft, activeTestId, flagged, currentIdx]);
+  }, [answers, timeLeft, activeTestId, flagged, currentIdx, isSubmitted]);
+
+  // --- BACKEND INTEGRATION FUNCTIONS ---
+  const recordTestStart = async () => {
+    if (!activeTest || !user || user?.guest) return;
+    
+    try {
+      await apiService.recordTestStart(
+        activeTest.id,
+        activeTest.title,
+        activeTest.tags[0] || 'General',
+        activeTest.difficultyLevel
+      );
+    } catch (error) {
+      console.error('Failed to record test start:', error);
+    }
+  };
+
+  const recordQuestionAnswer = async (questionId: number, answerIndex: number) => {
+    if (!activeTest || !user || user?.guest) return;
+    
+    const currentQ = activeTest.questions.find(q => q.id === questionId);
+    if (!currentQ) return;
+
+    try {
+      await apiService.recordQuestionAnswered(
+        activeTest.id,
+        questionId,
+        currentIdx,
+        answerIndex,
+        currentQ.correctAnswer,
+        30,
+        currentQ.category,
+        currentQ.difficulty
+      );
+    } catch (error) {
+      console.error('Failed to record question answer:', error);
+    }
+  };
+
+  const recordQuestionFlag = async (questionId: number) => {
+    if (!activeTest || !user || user?.guest) return;
+    
+    try {
+      await apiService.recordQuestionFlagged(activeTest.id, questionId);
+    } catch (error) {
+      console.error('Failed to record question flag:', error);
+    }
+  };
+
+  const recordTestCompletion = async (score: number) => {
+    if (!activeTest || !user || user?.guest) return;
+
+    const testSessionData = {
+      testId: activeTest.id.toString(),
+      testName: activeTest.title,
+      testCategory: activeTest.tags[0] || 'General',
+      testDifficulty: activeTest.difficultyLevel,
+      testTags: activeTest.tags,
+      status: 'completed',
+      totalDuration: 3600 - timeLeft,
+      questions: activeTest.questions.map((q, index) => ({
+        questionId: q.id.toString(),
+        questionIndex: index,
+        questionText: q.question.substring(0, 200),
+        category: q.category,
+        difficulty: q.difficulty,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        userAnswer: answers[q.id],
+        timeSpent: 45,
+        isFlagged: flagged.includes(q.id),
+        isReviewed: false,
+        isCorrect: answers[q.id] === q.correctAnswer
+      })),
+      performance: {
+        totalQuestions: QUESTIONS_PER_TEST,
+        answeredQuestions: Object.keys(answers).length,
+        correctAnswers: score,
+        incorrectAnswers: Object.keys(answers).length - score,
+        skippedQuestions: QUESTIONS_PER_TEST - Object.keys(answers).length,
+        flaggedQuestions: flagged.length,
+        reviewedQuestions: 0,
+        averageTimePerQuestion: (3600 - timeLeft) / Object.keys(answers).length || 0,
+        accuracy: (score / QUESTIONS_PER_TEST) * 100,
+      },
+      rawScore: score,
+      normalizedScore: (score / QUESTIONS_PER_TEST) * 100,
+      passingScore: activeTest.passingScore,
+      isPassed: score >= activeTest.passingScore,
+      environment: {
+        browser: navigator.userAgent,
+        os: navigator.platform,
+        device: 'desktop',
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        networkType: 'unknown',
+        ipAddress: 'unknown'
+      }
+    };
+
+    try {
+      await apiService.recordTestCompleted(testSessionData);
+      toast.success("Test results saved to your profile!");
+    } catch (error) {
+      console.error('Failed to record test completion:', error);
+      toast.error("Failed to save test results, but test completed locally");
+    }
+  };
 
   // --- PROCTORING SYSTEM ---
   useEffect(() => {
     if (!activeTestId || isSubmitted) return;
 
-    const logEvent = (msg: string, type: "info" | "warning" | "violation" = "info") => {
-      const prefix = type === "violation" ? "🔴 VIOLATION" : type === "warning" ? "🟡 WARNING" : "🔵 INFO";
-      const logMsg = `${prefix} ${new Date().toLocaleTimeString()}: ${msg}`;
-      setProctorLogs(prev => [...prev.slice(-9), logMsg]);
-      
-      if (type === "violation") {
-        toast.error(`PROCTOR: ${msg}`, { duration: 5000 });
-      } else if (type === "warning") {
-        toast.warning(msg, { duration: 3000 });
-      }
-    };
-
-    const handleBlur = () => logEvent("Tab switched - focus lost", "violation");
-    const handleContext = (e: MouseEvent) => {
-      e.preventDefault();
-      logEvent("Right-click disabled", "warning");
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'x')) {
-        e.preventDefault();
-        logEvent("Copy/paste disabled", "violation");
-      }
-      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
-        e.preventDefault();
-        logEvent("Developer tools blocked", "violation");
-      }
-    };
-
-    // Timer
     const ticker = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 0) {
@@ -511,7 +995,6 @@ const PlacementMockEngine = () => {
           return 0;
         }
         
-        // Performance tracking
         if (prev % 30 === 0) {
           const answered = Object.keys(answers).length;
           const speed = answered / (3600 - prev) * 60;
@@ -525,18 +1008,15 @@ const PlacementMockEngine = () => {
       });
     }, 1000);
 
-    // Event listeners
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('contextmenu', handleContext);
-    window.addEventListener('keydown', handleKeyDown);
+    // Record test start when test begins
+    if (user && !user.guest) {
+      recordTestStart();
+    }
 
     return () => {
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('contextmenu', handleContext);
-      window.removeEventListener('keydown', handleKeyDown);
       clearInterval(ticker);
     };
-  }, [activeTestId, isSubmitted, answers]);
+  }, [activeTestId, isSubmitted, answers, user]);
 
   // --- PERFORMANCE TRACKING ---
   useEffect(() => {
@@ -568,7 +1048,7 @@ const PlacementMockEngine = () => {
     }
   }, [answers, activeTest]);
 
-  const finalizeTest = () => {
+  const finalizeTest = async () => {
     setIsSubmitted(true);
     const score = activeTest?.questions.reduce((acc, q) => acc + (answers[q.id] === q.correctAnswer ? 1 : 0), 0) || 0;
     const newHistory = [...testHistory, {
@@ -580,6 +1060,11 @@ const PlacementMockEngine = () => {
     setTestHistory(newHistory);
     localStorage.setItem('test_history', JSON.stringify(newHistory));
     localStorage.removeItem('placement_state_v1');
+    
+    // Record test completion to backend for authenticated users
+    if (user && !user.guest) {
+      await recordTestCompletion(score);
+    }
     
     toast.success(`Test Complete! Score: ${score}/${QUESTIONS_PER_TEST}`, {
       duration: 5000,
@@ -603,7 +1088,6 @@ const PlacementMockEngine = () => {
     setCurrentIdx(0);
     setTimeLeft(3600);
     setIsSubmitted(false);
-    setProctorLogs(["[SYSTEM] Test reset"]);
     localStorage.removeItem('placement_state_v1');
     toast.info("Test reset to initial state");
   };
@@ -617,7 +1101,106 @@ const PlacementMockEngine = () => {
     return matchesSearch && matchesTags && matchesDifficulty;
   });
 
-  // --- MAIN RENDER ---
+  // --- AUTH UI COMPONENTS ---
+  const AuthPrompt = () => (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gray-900 border border-gray-700 p-8 rounded-2xl max-w-md w-full"
+      >
+        <div className="text-center mb-6">
+          <Lock className="w-16 h-16 text-cyan-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
+          <p className="text-gray-400">Login or register to track your progress and save test results</p>
+        </div>
+        
+        <div className="space-y-4">
+          <button
+            onClick={async () => {
+              try {
+                setLoading(true);
+                const response = await apiService.demoLogin();
+                if (response.success) {
+                  setUser(response.data.user || response.data);
+                  localStorage.setItem('user', JSON.stringify(response.data));
+                  localStorage.removeItem('guest_session');
+                  toast.success("Demo login successful!");
+                  await loadUserData();
+                } else {
+                  toast.error(response.message || "Demo login failed");
+                }
+              } catch (error) {
+                toast.error("Demo login failed. Please try again.");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="w-full px-6 py-3 bg-cyan-600 text-white font-bold rounded-xl hover:bg-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Try Demo Account"}
+          </button>
+          
+          <div className="text-center text-gray-500 text-sm">
+            <p>Demo account has limited features</p>
+            <p className="mt-2">
+              <a href="/login" className="text-cyan-400 hover:text-cyan-300">
+                Full login
+              </a> • 
+              <a href="/register" className="text-cyan-400 hover:text-cyan-300 ml-2">
+                Register
+              </a>
+            </p>
+          </div>
+        </div>
+        
+        <button
+          onClick={handleGuestMode}
+          className="w-full mt-4 px-6 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-all"
+        >
+          Continue as Guest
+        </button>
+      </motion.div>
+    </div>
+  );
+
+  // --- LOADING SCREEN ---
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- AUTH CHECK ---
+  if (!user && !loading) {
+    return (
+      <>
+        <AuthPrompt />
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-6 font-sans">
+          <div className="max-w-7xl mx-auto">
+            <header className="mb-10">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-5xl font-bold">
+                    <span className="text-cyan-400">Placement</span> Prep Pro
+                  </h1>
+                  <p className="text-gray-400 mt-2">Master your placement interviews with 336 unique questions</p>
+                </div>
+              </div>
+            </header>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // --- MAIN DASHBOARD RENDER ---
   if (!activeTestId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-6 font-sans">
@@ -629,14 +1212,36 @@ const PlacementMockEngine = () => {
                 <h1 className="text-5xl font-bold">
                   <span className="text-cyan-400">Placement</span> Prep Pro
                 </h1>
-                <p className="text-gray-400 mt-2">Master your placement interviews with 336 unique questions</p>
+                <p className="text-gray-400 mt-2">
+                  {user?.guest ? "Guest Mode - Progress saved locally for 24 hours" : `Welcome, ${user?.name || user?.email || 'User'}!`}
+                </p>
               </div>
               <div className="flex items-center gap-3">
+                {!user?.guest && (
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const response = await apiService.getPerformanceAnalytics('30d');
+                        if (response.success) {
+                          setShowStats(true);
+                        }
+                      } catch (error) {
+                        toast.error("Failed to load analytics");
+                      }
+                    }}
+                    className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700"
+                  >
+                    <BarChart3 size={20} />
+                  </button>
+                )}
                 <button onClick={() => setShowStats(true)} className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700">
-                  <BarChart3 size={20} />
-                </button>
-                <button onClick={() => setShowSettings(true)} className="p-3 rounded-xl bg-gray-800 hover:bg-gray-700">
                   <Settings size={20} />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600/30"
+                >
+                  {user?.guest ? "Exit Guest Mode" : "Logout"}
                 </button>
               </div>
             </div>
@@ -661,6 +1266,12 @@ const PlacementMockEngine = () => {
                 <Target size={16} />
                 <span>{PLACEMENT_DATASET.length} Mock Tests</span>
               </div>
+              {!user?.guest && performance.accuracy > 0 && (
+                <div className="flex items-center gap-2">
+                  <Award size={16} />
+                  <span>Accuracy: {Math.round(performance.accuracy)}%</span>
+                </div>
+              )}
             </div>
           </header>
 
@@ -689,7 +1300,11 @@ const PlacementMockEngine = () => {
                   <option value="Advanced">Advanced</option>
                 </select>
                 <button
-                  onClick={() => setSelectedTags([])}
+                  onClick={() => {
+                    setSelectedTags([]);
+                    setSearchQuery("");
+                    setDifficultyFilter("all");
+                  }}
                   className="px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl hover:bg-gray-800"
                 >
                   Clear Filters
@@ -724,7 +1339,7 @@ const PlacementMockEngine = () => {
                 key={test.id}
                 whileHover={{ scale: 1.02, y: -4 }}
                 onClick={() => setActiveTestId(test.id)}
-                className="p-6 rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900/50 to-black cursor-pointer group transition-all"
+                className="p-6 rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900/50 to-black cursor-pointer group transition-all relative"
               >
                 {/* Difficulty Badge */}
                 <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold ${
@@ -824,6 +1439,20 @@ const PlacementMockEngine = () => {
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Performance Summary */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-800/50 p-4 rounded-xl">
+                        <p className="text-sm text-gray-400 mb-1">Total Tests</p>
+                        <p className="text-2xl font-bold">{testHistory.length}</p>
+                      </div>
+                      <div className="bg-gray-800/50 p-4 rounded-xl">
+                        <p className="text-sm text-gray-400 mb-1">Average Score</p>
+                        <p className="text-2xl font-bold">
+                          {Math.round(testHistory.reduce((acc, t) => acc + t.score, 0) / testHistory.length)}/12
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -839,6 +1468,7 @@ const PlacementMockEngine = () => {
     );
   }
 
+  // --- TEST COMPLETE SCREEN ---
   if (isSubmitted && activeTest) {
     const score = activeTest.questions.reduce((acc, q) => acc + (answers[q.id] === q.correctAnswer ? 1 : 0), 0);
     const percentage = Math.round((score / QUESTIONS_PER_TEST) * 100);
@@ -854,9 +1484,12 @@ const PlacementMockEngine = () => {
           className="max-w-4xl w-full bg-gray-900 border border-gray-700 p-12 rounded-3xl shadow-2xl"
         >
           <div className="text-center mb-10">
-            <Award className="w-24 h-24 text-cyan-500 mx-auto mb-6" />
+            <AwardIcon className="w-24 h-24 text-cyan-500 mx-auto mb-6" />
             <h2 className="text-4xl font-bold mb-2">Test Complete!</h2>
             <p className="text-gray-400">{activeTest.company}</p>
+            {user?.guest && (
+              <p className="text-yellow-500 text-sm mt-2">⚠️ Guest mode: Results saved locally for 24 hours</p>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -876,7 +1509,11 @@ const PlacementMockEngine = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                setActiveTestId(null);
+                setIsSubmitted(false);
+                resetTest();
+              }}
               className="px-8 py-4 bg-cyan-600 text-white font-bold rounded-xl hover:bg-cyan-700 transition-all"
             >
               Take Another Test
@@ -887,12 +1524,24 @@ const PlacementMockEngine = () => {
             >
               View Analytics
             </button>
+            {user?.guest && (
+              <button 
+                onClick={() => {
+                  handleLogout();
+                  toast.success("Redirecting to login...");
+                }}
+                className="px-8 py-4 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-all"
+              >
+                Login to Save Progress
+              </button>
+            )}
           </div>
         </motion.div>
       </div>
     );
   }
 
+  // --- ACTIVE TEST SCREEN ---
   const currentQ = activeTest!.questions[currentIdx];
   const progress = ((currentIdx + 1) / QUESTIONS_PER_TEST) * 100;
 
@@ -902,7 +1551,11 @@ const PlacementMockEngine = () => {
       <nav className="h-16 border-b border-gray-800 px-6 flex justify-between items-center bg-gray-900/90 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => setActiveTestId(null)}
+            onClick={() => {
+              if (confirm('Are you sure you want to leave? Your progress will be saved.')) {
+                setActiveTestId(null);
+              }
+            }}
             className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700"
           >
             <Home size={20} />
@@ -921,8 +1574,17 @@ const PlacementMockEngine = () => {
             <Timer size={18} />
             <span className="text-xl font-mono font-bold">{formatTime(timeLeft)}</span>
           </div>
+          {user?.guest && (
+            <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-sm">
+              Guest Mode
+            </div>
+          )}
           <button 
-            onClick={finalizeTest}
+            onClick={() => {
+              if (confirm('Are you sure you want to submit the test?')) {
+                finalizeTest();
+              }
+            }}
             className="px-6 py-3 bg-cyan-600 text-white font-bold rounded-xl hover:bg-cyan-700 transition-all"
           >
             Submit Test
@@ -1057,7 +1719,12 @@ const PlacementMockEngine = () => {
                 {currentQ.options.map((opt, i) => (
                   <button 
                     key={i}
-                    onClick={() => setAnswers({...answers, [currentQ.id]: i})}
+                    onClick={() => {
+                      setAnswers({...answers, [currentQ.id]: i});
+                      if (user && !user.guest) {
+                        recordQuestionAnswer(currentQ.id, i);
+                      }
+                    }}
                     className={`w-full p-6 text-left rounded-xl border transition-all ${
                       answers[currentQ.id] === i 
                         ? 'bg-cyan-600/20 border-cyan-500 text-white shadow-lg' 
@@ -1110,7 +1777,18 @@ const PlacementMockEngine = () => {
               
               <div className="flex items-center gap-4">
                 <button 
-                  onClick={() => setFlagged(prev => prev.includes(currentQ.id) ? prev.filter(f => f !== currentQ.id) : [...prev, currentQ.id])}
+                  onClick={() => {
+                    const newFlagged = flagged.includes(currentQ.id) 
+                      ? flagged.filter(f => f !== currentQ.id) 
+                      : [...flagged, currentQ.id];
+                    setFlagged(newFlagged);
+                    
+                    if (user && !user.guest) {
+                      if (!flagged.includes(currentQ.id)) {
+                        recordQuestionFlag(currentQ.id);
+                      }
+                    }
+                  }}
                   className={`p-3 rounded-xl ${
                     flagged.includes(currentQ.id) 
                       ? 'bg-yellow-500/20 text-yellow-400' 
@@ -1120,7 +1798,11 @@ const PlacementMockEngine = () => {
                   <Flag size={18} />
                 </button>
                 <button 
-                  onClick={resetTest}
+                  onClick={() => {
+                    if (confirm('Are you sure you want to reset the test? All progress will be lost.')) {
+                      resetTest();
+                    }
+                  }}
                   className="px-4 py-3 bg-gray-800 rounded-xl hover:bg-gray-700 text-sm"
                 >
                   Reset Test

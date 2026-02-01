@@ -1,40 +1,27 @@
 import Progress from "../models/Progress.js";
 import User from "../models/User.js";
+import ActivityService from "../services/activityService.js";
 
 // Get user progress
 export const getUserProgress = async (req, res) => {
   try {
-    // Check if user ID exists in token
-    if (!req.user || !req.user.userId) {
+    if (!req.user || (!req.user._id && !req.user.userId)) {
       return res.status(401).json({
         success: false,
-        message: "Invalid user ID in token"
+        message: "User not authenticated"
       });
     }
 
-    const userId = req.user.userId;
+    const userId = req.user._id || req.user.userId;
     
-    console.log("📊 Fetching progress for user ID:", userId);
-    
-    // First get the user to ensure they exist
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-
-    const progress = await Progress.getUserProgress(userId);
+    // Find or create progress document
+    let progress = await Progress.findOne({ userId });
     
     if (!progress) {
-      return res.status(404).json({
-        success: false,
-        message: "Progress data not found"
-      });
+      progress = await Progress.createDefaultProgress(userId);
     }
     
-    // Format response for frontend
+    // Format response
     const formattedProgress = {
       userId: progress.userId,
       
@@ -48,16 +35,16 @@ export const getUserProgress = async (req, res) => {
             : "KEEP GOING!"
         },
         avgAccuracy: {
-          value: progress.studyAnalytics.averageAccuracy.toFixed(1),
+          value: (progress.studyAnalytics.averageAccuracy || 0).toFixed(1),
           trend: 4.1,
-          message: progress.studyAnalytics.averageAccuracy >= 80 
-            ? `+${Math.random() * 5}% FROM LAST WEEK`
+          message: (progress.studyAnalytics.averageAccuracy || 0) >= 80 
+            ? `+${(Math.random() * 5).toFixed(1)}% FROM LAST WEEK`
             : "ROOM FOR IMPROVEMENT"
         },
         estimatedReadiness: {
           level: progress.studyAnalytics.estimatedReadiness || 1,
           maxLevel: 5,
-          message: getReadinessMessage(progress.studyAnalytics.estimatedReadiness)
+          message: getReadinessMessage(progress.studyAnalytics.estimatedReadiness || 1)
         }
       },
       
@@ -73,12 +60,12 @@ export const getUserProgress = async (req, res) => {
       testHistory: progress.testHistory.map(test => ({
         id: test.testId || test._id,
         testName: test.testName,
-        date: test.date.toISOString().split('T')[0],
+        date: test.date.toISOString().split("T")[0],
         score: test.score,
         total: test.totalScore,
         category: test.category,
         accuracy: test.accuracy,
-        duration: `${Math.floor(test.duration)}m`,
+        duration: `${Math.floor(test.duration || 0)}m`,
         difficulty: test.difficulty
       })).sort((a, b) => new Date(b.date) - new Date(a.date)),
       
@@ -101,8 +88,8 @@ export const getUserProgress = async (req, res) => {
         icon: ach.icon,
         unlocked: ach.unlocked,
         color: getAchievementColor(ach.achievementId),
-        progress: ach.progress,
-        totalRequired: ach.totalRequired
+        progress: ach.progress || 0,
+        totalRequired: ach.totalRequired || 10
       })),
       
       // Study Analytics
@@ -115,14 +102,12 @@ export const getUserProgress = async (req, res) => {
       }
     };
     
-    console.log("✅ Progress data fetched successfully for user:", user.email);
-    
     res.status(200).json({
       success: true,
       data: formattedProgress
     });
   } catch (error) {
-    console.error('❌ Error fetching progress:', error.message);
+    console.error("Error fetching progress:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching progress data",
@@ -134,12 +119,12 @@ export const getUserProgress = async (req, res) => {
 // Record test result
 export const recordTestResult = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user._id || req.user.userId;
     
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Invalid user ID"
+        message: "User not authenticated"
       });
     }
 
@@ -155,43 +140,66 @@ export const recordTestResult = async (req, res) => {
       timePerQuestion
     } = req.body;
     
-    console.log("📝 Recording test result for user:", userId);
-    
     // Find or create progress document
     let progress = await Progress.findOne({ userId });
     if (!progress) {
-      console.log("🆕 Creating new progress document for user");
       progress = await Progress.createDefaultProgress(userId);
     }
     
     // Add test result
     const testData = {
-      testName,
-      category,
-      score,
-      totalScore,
-      accuracy,
-      duration,
-      difficulty,
+      testName: testName || "Practice Test",
+      category: category || "General",
+      score: Math.max(0, score || 0),
+      totalScore: Math.max(1, totalScore || 10),
+      accuracy: Math.min(100, Math.max(0, accuracy || 0)),
+      duration: Math.max(0, duration || 0),
+      difficulty: difficulty || "Medium",
       topics: topics || [],
-      timePerQuestion
+      timePerQuestion: Math.max(0, timePerQuestion || 120)
     };
     
     await progress.addTestResult(testData);
     
-    console.log("✅ Test result recorded successfully");
+    // Also record as test session
+    try {
+      await ActivityService.recordTestSession(userId, {
+        testId: `test_${Date.now()}`,
+        testName: testData.testName,
+        testCategory: testData.category,
+        testDifficulty: testData.difficulty,
+        status: "completed",
+        totalDuration: testData.duration * 60, // Convert to seconds
+        scores: {
+          rawScore: testData.score,
+          normalizedScore: testData.accuracy,
+          passingScore: 70,
+          isPassed: testData.accuracy >= 70
+        },
+        performance: {
+          totalQuestions: testData.totalScore,
+          answeredQuestions: testData.totalScore,
+          correctAnswers: testData.score,
+          accuracy: testData.accuracy,
+          averageTimePerQuestion: testData.timePerQuestion
+        }
+      });
+    } catch (activityError) {
+      console.error("Failed to record activity:", activityError);
+      // Continue even if activity recording fails
+    }
     
     res.status(200).json({
       success: true,
       message: "Test result recorded successfully",
       data: {
         testId: progress.testHistory[progress.testHistory.length - 1].testId,
-        accuracy,
+        accuracy: testData.accuracy,
         newStreak: progress.dailyStats.streak
       }
     });
   } catch (error) {
-    console.error('❌ Error recording test result:', error.message);
+    console.error("Error recording test result:", error);
     res.status(500).json({
       success: false,
       message: "Error recording test result",
@@ -200,13 +208,18 @@ export const recordTestResult = async (req, res) => {
   }
 };
 
-// Rest of your controller functions remain the same...
-
 // Update skill proficiency
 export const updateSkill = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user._id || req.user.userId;
     const { skillName, proficiency } = req.body;
+    
+    if (!skillName || proficiency === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Skill name and proficiency are required"
+      });
+    }
     
     const progress = await Progress.findOne({ userId });
     if (!progress) {
@@ -216,21 +229,24 @@ export const updateSkill = async (req, res) => {
       });
     }
     
+    // Validate proficiency
+    const validatedProficiency = Math.min(100, Math.max(0, proficiency));
+    
     const skillIndex = progress.skillProficiency.findIndex(s => s.skillName === skillName);
     
     if (skillIndex >= 0) {
-      progress.skillProficiency[skillIndex].proficiency = proficiency;
+      progress.skillProficiency[skillIndex].proficiency = validatedProficiency;
       progress.skillProficiency[skillIndex].lastUpdated = new Date();
       progress.skillProficiency[skillIndex].history.push({
-        proficiency,
+        proficiency: validatedProficiency,
         date: new Date()
       });
     } else {
       progress.skillProficiency.push({
         skillName,
-        proficiency,
+        proficiency: validatedProficiency,
         lastUpdated: new Date(),
-        history: [{ proficiency, date: new Date() }]
+        history: [{ proficiency: validatedProficiency, date: new Date() }]
       });
     }
     
@@ -239,10 +255,10 @@ export const updateSkill = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Skill updated successfully",
-      data: { skillName, proficiency }
+      data: { skillName, proficiency: validatedProficiency }
     });
   } catch (error) {
-    console.error('❌ Error updating skill:', error);
+    console.error("Error updating skill:", error);
     res.status(500).json({
       success: false,
       message: "Error updating skill proficiency",
@@ -254,8 +270,8 @@ export const updateSkill = async (req, res) => {
 // Get progress analytics
 export const getAnalytics = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const { timeRange = 'month' } = req.query;
+    const userId = req.user._id || req.user.userId;
+    const { timeRange = "month" } = req.query;
     
     const progress = await Progress.findOne({ userId });
     if (!progress) {
@@ -278,7 +294,7 @@ export const getAnalytics = async (req, res) => {
       data: analytics
     });
   } catch (error) {
-    console.error('❌ Error fetching analytics:', error);
+    console.error("Error fetching analytics:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching analytics",
@@ -290,40 +306,40 @@ export const getAnalytics = async (req, res) => {
 // Helper functions
 function getSkillColor(skillName) {
   const colors = {
-    'Data Structures': 'bg-[#00d4aa]',
-    'System Design': 'bg-blue-500',
-    'Frontend': 'bg-purple-500',
-    'Backend': 'bg-rose-500',
-    'Algorithms': 'bg-amber-500',
-    'Databases': 'bg-indigo-500'
+    "Data Structures": "bg-[#00d4aa]",
+    "System Design": "bg-blue-500",
+    "Frontend": "bg-purple-500",
+    "Backend": "bg-rose-500",
+    "Algorithms": "bg-amber-500",
+    "Databases": "bg-indigo-500"
   };
-  return colors[skillName] || 'bg-gray-500';
+  return colors[skillName] || "bg-gray-500";
 }
 
 function getSkillInfo(skillName, proficiency) {
   const infoMap = {
-    'Data Structures': proficiency >= 80 ? 'Expert in Graphs & Trees' : proficiency >= 60 ? 'Good understanding' : 'Needs practice',
-    'System Design': proficiency >= 80 ? 'Strong in scalability' : proficiency >= 60 ? 'Basic concepts clear' : 'Needs work on Sharding',
-    'Frontend': proficiency >= 80 ? 'Master of React Hooks' : proficiency >= 60 ? 'Comfortable with basics' : 'Learn modern frameworks',
-    'Backend': proficiency >= 80 ? 'Expert in APIs & Security' : proficiency >= 60 ? 'Good backend knowledge' : 'Focus on SQL indexing'
+    "Data Structures": proficiency >= 80 ? "Expert in Graphs & Trees" : proficiency >= 60 ? "Good understanding" : "Needs practice",
+    "System Design": proficiency >= 80 ? "Strong in scalability" : proficiency >= 60 ? "Basic concepts clear" : "Needs work on Sharding",
+    "Frontend": proficiency >= 80 ? "Master of React Hooks" : proficiency >= 60 ? "Comfortable with basics" : "Learn modern frameworks",
+    "Backend": proficiency >= 80 ? "Expert in APIs & Security" : proficiency >= 60 ? "Good backend knowledge" : "Focus on SQL indexing"
   };
-  return infoMap[skillName] || 'Keep practicing';
+  return infoMap[skillName] || "Keep practicing";
 }
 
 function getReadinessMessage(level) {
   const messages = {
-    1: 'BEGINNER - START WITH BASICS',
-    2: 'INTERMEDIATE - PRACTICE MORE',
-    3: 'ADVANCED - READY FOR MOCKS',
-    4: 'EXPERT - ELIGIBLE FOR FAANG',
-    5: 'MASTER - TOP 1% CANDIDATE'
+    1: "BEGINNER - START WITH BASICS",
+    2: "INTERMEDIATE - PRACTICE MORE",
+    3: "ADVANCED - READY FOR MOCKS",
+    4: "EXPERT - ELIGIBLE FOR FAANG",
+    5: "MASTER - TOP 1% CANDIDATE"
   };
-  return messages[level] || 'KEEP PRACTICING';
+  return messages[level] || "KEEP PRACTICING";
 }
 
 function getPerformanceAnalysis(progress) {
-  const avgTime = progress.studyAnalytics.averageTimePerQuestion;
-  const accuracy = progress.studyAnalytics.averageAccuracy;
+  const avgTime = progress.studyAnalytics.averageTimePerQuestion || 42;
+  const accuracy = progress.studyAnalytics.averageAccuracy || 70;
   
   if (avgTime < 45 && accuracy > 80) {
     return "You are answering quickly with high accuracy, indicating strong pattern recognition.";
@@ -340,17 +356,17 @@ function getFocusAreas(progress) {
   }
   
   // Default suggestions
-  return ['B+ Trees Scaling', 'Network Latency Math', 'OAuth2 Flows'];
+  return ["B+ Trees Scaling", "Network Latency Math", "OAuth2 Flows"];
 }
 
 function getAchievementColor(achievementId) {
   const colors = {
-    'first_test': 'text-emerald-400',
-    'streak_7': 'text-blue-400',
-    'algorithm_ace': 'text-purple-400',
-    'perfect_score': 'text-yellow-400'
+    "first_test": "text-emerald-400",
+    "streak_7": "text-blue-400",
+    "algorithm_ace": "text-purple-400",
+    "perfect_score": "text-yellow-400"
   };
-  return colors[achievementId] || 'text-gray-400';
+  return colors[achievementId] || "text-gray-400";
 }
 
 function calculateEstimatedMonths(progress) {
@@ -361,29 +377,6 @@ function calculateEstimatedMonths(progress) {
     projections.quantTrading.estimatedMonths
   );
   return minMonths;
-}
-
-function getDailyActivity(progress, timeRange) {
-  const days = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 90;
-  const activity = [];
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    
-    // Count tests on this day
-    const testsOnDay = progress.testHistory.filter(test => {
-      const testDate = new Date(test.date);
-      return testDate.toDateString() === date.toDateString();
-    }).length;
-    
-    activity.push({
-      date: date.toISOString().split('T')[0],
-      count: testsOnDay
-    });
-  }
-  
-  return activity;
 }
 
 function generateStudyCalendar(progress) {
@@ -419,6 +412,29 @@ function generateStudyCalendar(progress) {
   return calendar;
 }
 
+function getDailyActivity(progress, timeRange) {
+  const days = timeRange === "week" ? 7 : timeRange === "month" ? 30 : 90;
+  const activity = [];
+  
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toDateString();
+    
+    // Count tests on this day
+    const testsOnDay = progress.testHistory.filter(test => 
+      new Date(test.date).toDateString() === dateStr
+    ).length;
+    
+    activity.push({
+      date: date.toISOString().split("T")[0],
+      count: testsOnDay
+    });
+  }
+  
+  return activity;
+}
+
 function getSkillTrends(progress) {
   return progress.skillProficiency.map(skill => ({
     skill: skill.skillName,
@@ -438,7 +454,7 @@ function getPerformanceMetrics(progress) {
       avgAccuracy: 0,
       avgTime: 0,
       totalTests: 0,
-      bestCategory: 'N/A',
+      bestCategory: "N/A",
       improvementRate: 0
     };
   }
@@ -449,7 +465,7 @@ function getPerformanceMetrics(progress) {
   });
   
   const bestCategory = Object.entries(categories)
-    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
   
   return {
     avgAccuracy: progress.studyAnalytics.averageAccuracy,
@@ -500,3 +516,39 @@ function getRecommendations(progress) {
   
   return recommendations.slice(0, 3);
 }
+
+// Get progress summary for dashboard
+export const getProgressSummary = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.userId;
+    
+    const progress = await Progress.findOne({ userId });
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        message: "Progress data not found"
+      });
+    }
+    
+    const summary = {
+      totalTests: progress.studyAnalytics.totalTestsTaken,
+      totalQuestions: progress.studyAnalytics.totalQuestionsAttempted,
+      averageAccuracy: progress.studyAnalytics.averageAccuracy,
+      currentStreak: progress.dailyStats.streak,
+      skillCount: progress.skillProficiency.length,
+      achievementsUnlocked: progress.achievements.filter(a => a.unlocked).length
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    console.error("Error fetching progress summary:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching progress summary",
+      error: error.message
+    });
+  }
+};

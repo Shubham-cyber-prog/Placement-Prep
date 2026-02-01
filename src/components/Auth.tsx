@@ -44,6 +44,7 @@ const Auth = () => {
 
   // Handle email/password authentication
   // Replace Firebase imports with your backend calls
+// In Auth.jsx - Update the handleAuth function
 const handleAuth = async (e) => {
   e.preventDefault();
   setError('');
@@ -79,11 +80,12 @@ const handleAuth = async (e) => {
     const data = await response.json();
 
     if (data.success) {
-      // Store the token from your backend
+      // Store the token and user data from your backend
       localStorage.setItem('auth_token', data.data.token);
       localStorage.setItem('user', JSON.stringify(data.data.user));
+      localStorage.setItem('auth_type', 'backend'); // Add this to identify auth type
       
-      // Navigate to progress page
+      // Navigate to dashboard
       navigate('/dashboard');
     } else {
       setError(data.message || 'Authentication failed');
