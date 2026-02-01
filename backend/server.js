@@ -2,11 +2,15 @@ import express from "express";
 import cors from "cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import topicRoutes from "./routes/topic.routes.js";
 import problemRoutes from "./routes/problem.routes.js";
 import rankingRoutes from "./routes/ranking.routes.js";
+import groupRoutes from "./routes/group.routes.js";
+import discussionRoutes from "./routes/discussion.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -95,9 +99,41 @@ if (MONGODB_URI) {
   console.log('⚠️  MONGODB_URI not set, running without database');
 }
 
+// Create HTTP server and Socket.io
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  },
+});
+
+// Socket.io setup for real-time discussions
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('joinDiscussion', (discussionId) => {
+    socket.join(discussionId);
+    console.log(`User ${socket.id} joined discussion ${discussionId}`);
+  });
+
+  socket.on('leaveDiscussion', (discussionId) => {
+    socket.leave(discussionId);
+    console.log(`User ${socket.id} left discussion ${discussionId}`);
+  });
+
+  socket.on('newComment', (data) => {
+    socket.to(data.discussionId).emit('commentReceived', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📚 Questions: http://localhost:${PORT}/api/questions`);
