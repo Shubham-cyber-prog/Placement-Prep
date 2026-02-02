@@ -84,6 +84,53 @@ app.get("/", (req, res) => {
     },
     documentation: "https://github.com/yourusername/placement-prep-backend"
   });
+
+
+// Create HTTP server and Socket.io
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  },
+});
+
+// Socket.io setup for real-time discussions
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('joinDiscussion', (discussionId) => {
+    socket.join(discussionId);
+    console.log(`User ${socket.id} joined discussion ${discussionId}`);
+  });
+
+  socket.on('leaveDiscussion', (discussionId) => {
+    socket.leave(discussionId);
+    console.log(`User ${socket.id} left discussion ${discussionId}`);
+  });
+
+  socket.on('newComment', (data) => {
+    socket.to(data.discussionId).emit('commentReceived', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Home: http://localhost:${PORT}`);
+  console.log(`🩺 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
+  console.log(`📊 Progress API: http://localhost:${PORT}/api/progress`);
+  console.log(`📈 Dashboard API: http://localhost:${PORT}/api/dashboard`);
+  console.log(`🏠 Homepage API: http://localhost:${PORT}/api/homepage`);
+  console.log(`👤 Demo login: POST http://localhost:${PORT}/api/auth/demo-login`);
+  console.log(`📱 Frontend: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+
 });
 
 // 404 handler
