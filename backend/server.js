@@ -74,6 +74,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/topics", topicRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/rankings", rankingRoutes);
+app.use("/api/recommendations", recommendationRoutes);
 app.get("/api/mock-tests", (req, res) => {
   res.json({
     success: true,
