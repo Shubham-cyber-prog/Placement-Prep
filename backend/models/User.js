@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, "Email is required"],
-    unique: true,
+    unique: true,  // This creates the index
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"]
@@ -117,8 +117,7 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes
-userSchema.index({ email: 1 }, { unique: true });
+// Indexes - REMOVE the email index (it's already created by unique: true)
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 

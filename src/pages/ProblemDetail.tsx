@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { 
-  ArrowLeft, Play, Send, BookOpen, Code2, CheckCircle, 
-  Clock, Star, RotateCcw, Lightbulb, MessageSquare, 
-  Target, Copy, History, Terminal, Database, Zap, BarChart3, 
-  Settings2, ShieldAlert, Cpu, Activity, X, Moon, Sun, Wand2, 
-  Briefcase, TrendingUp, Trophy, UserCheck, SearchCode, 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowLeft, Play, Send, BookOpen, Code2, CheckCircle,
+  Clock, Star, RotateCcw, Lightbulb, MessageSquare,
+  Target, Copy, History, Terminal, Database, Zap, BarChart3,
+  Settings2, ShieldAlert, Cpu, Activity, X, Moon, Sun, Wand2,
+  Briefcase, TrendingUp, Trophy, UserCheck, SearchCode,
   ShieldCheck, AlertCircle, Gauge, BrainCircuit, DollarSign, Fingerprint, Award, BarChart,
   Users, FileText, ChevronDown, ChevronUp, ExternalLink, Layers, GitBranch,
   Building, Hash, Network, GitPullRequest, Lock, Unlock, Puzzle, Sparkles,
@@ -15,18 +16,6 @@ import {
   Telescope, Satellite, Radar, Wrench, Hammer, Cog, Drill, Search,
   Filter, TreePine, Binary as BinaryIcon, Hash as HashIcon, List,
   MessageSquare as MessageSquareIcon, Table as TableIcon
-} from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft, Play, Send, BookOpen, Code2, CheckCircle,
-  Clock, Star, RotateCcw, Lightbulb, MessageSquare,
-  Target, Copy, History, Terminal, Database, Zap, BarChart3,
-  Settings2, ShieldAlert, Cpu, Activity, X, Moon, Sun, Wand2,
-  Briefcase, TrendingUp, Trophy, UserCheck, SearchCode,
-  ShieldCheck, AlertCircle, Gauge, BrainCircuit, DollarSign, Fingerprint, Award, BarChart
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
