@@ -49,90 +49,40 @@
 ---
 
 ## 📁 Repository Structure
+
+This repository serves as both a web platform for interactive placement preparation and a hub for curated content and resources.
+
 ```
 Placement-Prep/
 │
-├── 01-Data-Structures/
-│   ├── 01-Arrays/
-│   │   ├── Theory.md
-│   │   ├── Easy/
-│   │   ├── Medium/
-│   │   └── Hard/
-│   │
-│   ├── 02-Linked-Lists/
-│   ├── 03-Stacks-Queues/
-│   ├── 04-Trees-BST/
-│   ├── 05-Heaps-Priority-Queues/
-│   ├── 06-Graphs/
-│   └── 07-Hash-Tables/
+├── backend/                    # Backend server and API
+│   ├── config/                 # Database and application configuration
+│   ├── controllers/            # Route handlers for API endpoints
+│   ├── middlewares/            # Authentication, error handling, and other middlewares
+│   ├── models/                 # MongoDB schemas and data models
+│   ├── routes/                 # API route definitions
+│   └── utils/                  # Utility functions and helpers
 │
-├── 02-Algorithms/
-│   ├── 01-Searching-Sorting/
-│   ├── 02-Dynamic-Programming/
-│   ├── 03-Backtracking/
-│   ├── 04-Greedy-Algorithms/
-│   ├── 05-Divide-and-Conquer/
-│   └── 06-Sliding-Window/
-│        ├──  Theory.md          ✅ (must) 
-│        ├── Easy/
-│        |     └── README.md     ✅ (problem list)
-|        └── Medium/
-|              └── README.md     ✅ (problem list)
-├── 03-System-Design/
-│   ├── Low-Level-Design/
-│   │   ├── OOP-Principles.md
-│   │   ├── Design-Patterns/
-│   │   └── Case-Studies/
-│   │
-│   ├── High-Level-Design/
-│   │   ├── Scalability.md
-│   │   ├── Databases/
-│   │   ├── Caching/
-│   │   └── Messaging-Queues/
-│   │
-│   └── Real-World-Systems/
+├── src/                        # Frontend React application
+│   ├── components/             # Reusable UI components (shadcn/ui based)
+│   ├── hooks/                  # Custom React hooks
+│   ├── layouts/                # Page layout components
+│   ├── lib/                    # Utility libraries and configurations
+│   └── pages/                  # Application pages and views
 │
-├── 04-Company-Wise/
-│   ├── Google/
-│   ├── Amazon/
-│   ├── Microsoft/
-│   ├── Meta/
-│   ├── Apple/
-│   ├── Netflix/
-│   └── Other-Companies/
+├── public/                     # Static assets (favicon, images, robots.txt)
 │
-├── 05-Database/
-│   ├── SQL/
-│   ├── NoSQL/
-│   └── Database-Design/
+├── Easy/                       # Placement preparation content
+│   └── Medium/                 # Medium difficulty problems and solutions
 │
-├── 06-Operating-System/
-│   ├── Process-Management/
-│   ├── Memory-Management/
-│   ├── File-Systems/
-│   └── Threads-Concurrency/
-│
-├── 07-Computer-Networks/
-│   ├── Networking-Basics/
-│   ├── Protocols/
-│   └── Security/
-│
-├── 08-Behavioral/
-│   ├── Common-Questions.md
-│   ├── STAR-Method.md
-│   └── Resume-Tips.md
-│
-├── 09-Practice/
-│   ├── Mock-Interviews/
-│   ├── Coding-Challenges/
-│   └── Timed-Practice/
-│
-└── 10-Resources/
-    ├── Books/
-    ├── Online-Courses/
-    ├── Cheatsheets/
-    └── Roadmaps/
+├── package.json                # Frontend dependencies and scripts
+├── vite.config.ts              # Vite build configuration
+├── tailwind.config.ts          # Tailwind CSS configuration
+├── tsconfig.json               # TypeScript configuration
+└── README.md                   # This file
 ```
+
+**Note:** The repository combines a full-stack web application for interactive learning with traditional content organization. Additional content directories (e.g., for Data Structures, Algorithms) are planned for future expansion.
 ---
 
 ## 📅 Study Plan
