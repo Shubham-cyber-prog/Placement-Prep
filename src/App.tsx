@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import ScrollToTop from "./components/ScrollToTop";
 import ResumeBuilder from "./pages/ResumeBuilder";
+import MockInterview from "./pages/MockInterview"; // Add this import
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => {
               <Route path="/mentorship" element={<Mentorship />} />
               <Route path="/mock-test" element={<MockTest />} />
               <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
+              <Route path="/mock-interview" element={<MockInterview />} /> {/* Add this route */}
               <Route path="/aptitude-test" element={<AptitudePage />} />
               <Route path="/resume" element={<ResumeBuilder />} />
               <Route path="/settings" element={<Settings />} />
@@ -68,4 +70,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default App; 

@@ -14,6 +14,7 @@ import activityRoutes from "./routes/activityRoutes.js";
 import progressRoutes from "./routes/progressRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import homepageRoutes from "./routes/homepageRoutes.js";
+import interviewRoutes from "./routes/interview.routes.js"; // Add this import
 
 dotenv.config();
 
@@ -70,6 +71,7 @@ app.use("/api/activities", activityRoutes);
 app.use("/api/progress", progressRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/homepage", homepageRoutes);
+app.use("/api/interview", interviewRoutes); // Add this line to register interview routes
 
 // Welcome route
 app.get("/", (req, res) => {
@@ -82,11 +84,12 @@ app.get("/", (req, res) => {
       activities: "/api/activities",
       progress: "/api/progress",
       dashboard: "/api/dashboard",
-      homepage: "/api/homepage"
+      homepage: "/api/homepage",
+      interview: "/api/interview" // Add this endpoint
     },
     documentation: "https://github.com/yourusername/placement-prep-backend"
   });
-}); // <-- Added missing closing brace
+});
 
 // 404 handler
 app.use("*", (req, res) => {
@@ -186,6 +189,7 @@ const startServer = async () => {
       console.log(`📊 Progress API: http://localhost:${PORT}/api/progress`);
       console.log(`📈 Dashboard API: http://localhost:${PORT}/api/dashboard`);
       console.log(`🏠 Homepage API: http://localhost:${PORT}/api/homepage`);
+      console.log(`🎤 Interview API: http://localhost:${PORT}/api/interview`); // Add this line
       console.log(`👤 Demo login: POST http://localhost:${PORT}/api/auth/demo-login`);
       console.log(`📱 Frontend: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
     });
