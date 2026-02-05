@@ -235,7 +235,30 @@ A structured <b>12-week roadmap</b> covering <b>DSA, System Design, and Intervie
 
 ---
 
-## This project uses Supabase for authentication and database.
+## 🛠️ Tech Stack
+
+### Frontend
+- **React** - UI library for building the user interface
+- **TypeScript** - Type-safe JavaScript for better development experience
+- **Vite** - Fast build tool and development server
+- **Tailwind CSS** - Utility-first CSS framework for styling
+- **shadcn/ui** - Modern UI components built on Radix UI
+- **React Router** - Declarative routing for React applications
+- **React Query** - Powerful data synchronization for React
+- **Socket.io** - Real-time bidirectional communication
+
+### Backend
+- **Node.js** - JavaScript runtime for server-side development
+- **Express** - Minimal and flexible Node.js web application framework
+- **MongoDB** - NoSQL database for flexible data storage
+- **Mongoose** - Elegant MongoDB object modeling for Node.js
+- **JWT** - JSON Web Tokens for secure authentication
+- **Socket.io** - Real-time, bidirectional and event-based communication
+
+### Other Tools
+- **Git** - Distributed version control system
+- **ESLint** - Tool for identifying and reporting patterns in JavaScript/TypeScript
+- **Prettier** - Code formatter for consistent code style
 
 ## 🤝 Contribution Guide
 
