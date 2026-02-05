@@ -14,7 +14,7 @@ import AptitudePage from "./pages/AptitudePage";
 import ProblemDetail from "./pages/ProblemDetail";
 import MyProgress from "./pages/MyProgress";
 import Companies from "./pages/Companies";
-import StudyMaterial from "./pages/StudyMaterial"; 
+import StudyMaterial from "./pages/StudyMaterial";
 import SystemDesign from "./pages/SystemDesign";
 import ComingSoon from "./pages/ComingSoon";
 import Mentorship from "./pages/Mentorship";
@@ -22,7 +22,11 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import ScrollToTop from "./components/ScrollToTop";
 import ResumeBuilder from "./pages/ResumeBuilder";
-import MockInterview from "./pages/MockInterview"; // Add this import
+import MockInterview from "./pages/MockInterview";
+import StudyGroups from "./pages/StudyGroups";
+import Forum from "./pages/Forum";
+import GroupDetail from "./pages/GroupDetail";
+import DiscussionDetail from "./pages/DiscussionDetail";
 
 const queryClient = new QueryClient();
 
@@ -36,12 +40,12 @@ const App = () => {
           <ScrollToTop />
           <Routes>
             {/* Public routes */}
-            <Route path="/" element={<Homepage />} /> {/* Homepage as landing */}
-            <Route path="/auth" element={<Auth />} /> {/* Auth page */}
+            <Route path="/" element={<Homepage />} />
+            <Route path="/auth" element={<Auth />} />
             
             {/* Protected dashboard routes */}
             <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Index />} /> {/* Dashboard page */}
+              <Route path="/dashboard" element={<Index />} />
               <Route path="/dsa" element={<DSA />} />
               <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
               <Route path="/study-material" element={<StudyMaterial />} />
@@ -51,7 +55,20 @@ const App = () => {
               <Route path="/mentorship" element={<Mentorship />} />
               <Route path="/mock-test" element={<MockTest />} />
               <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
-              <Route path="/mock-interview" element={<MockInterview />} /> {/* Add this route */}
+              <Route path="/mock-interview" element={<MockInterview />} />
+              
+              {/* Study Groups - Only ONE route for listing */}
+              <Route path="/study-groups" element={<StudyGroups />} />
+              
+              {/* Group Detail - Separate route */}
+              <Route path="/groups/:id" element={<GroupDetail />} />
+              
+              {/* Forum - Only ONE route for listing */}
+              <Route path="/forum" element={<Forum />} />
+              
+              {/* Discussion Detail - Use consistent naming */}
+              <Route path="/discussion/:id" element={<DiscussionDetail />} />
+              
               <Route path="/aptitude-test" element={<AptitudePage />} />
               <Route path="/resume" element={<ResumeBuilder />} />
               <Route path="/settings" element={<Settings />} />
@@ -70,4 +87,4 @@ const App = () => {
   );
 };
 
-export default App; 
+export default App;

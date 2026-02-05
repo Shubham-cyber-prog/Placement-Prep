@@ -14,7 +14,13 @@ import activityRoutes from "./routes/activityRoutes.js";
 import progressRoutes from "./routes/progressRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import homepageRoutes from "./routes/homepageRoutes.js";
-import interviewRoutes from "./routes/interview.routes.js"; // Add this import
+import interviewRoutes from "./routes/interview.routes.js";
+import groupRoutes from "./routes/group.routes.js"; // Add this import
+import discussionRoutes from "./routes/discussion.routes.js"; // Add this import
+
+// Import models to initialize them
+import "./models/Group.model.js";
+import "./models/Discussion.model.js";
 
 dotenv.config();
 
@@ -71,7 +77,9 @@ app.use("/api/activities", activityRoutes);
 app.use("/api/progress", progressRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/homepage", homepageRoutes);
-app.use("/api/interview", interviewRoutes); // Add this line to register interview routes
+app.use("/api/interview", interviewRoutes);
+app.use("/api/groups", groupRoutes); // Add this line
+app.use("/api/discussions", discussionRoutes); // Add this line
 
 // Welcome route
 app.get("/", (req, res) => {
@@ -85,7 +93,9 @@ app.get("/", (req, res) => {
       progress: "/api/progress",
       dashboard: "/api/dashboard",
       homepage: "/api/homepage",
-      interview: "/api/interview" // Add this endpoint
+      interview: "/api/interview",
+      groups: "/api/groups", // Add this
+      discussions: "/api/discussions" // Add this
     },
     documentation: "https://github.com/yourusername/placement-prep-backend"
   });
@@ -131,9 +141,12 @@ const connectDB = async () => {
     
     console.log("✅ MongoDB connected successfully");
     
-    // Create indexes
-    // Note: Remove duplicate index definitions from your models
-    // Check your schema files for both "index: true" and schema.index()
+    // Create indexes for groups and discussions
+    const Group = mongoose.model('Group');
+    const Discussion = mongoose.model('Discussion');
+    
+    await Group.createIndexes();
+    await Discussion.createIndexes();
     
     console.log("✅ Database indexes created");
   } catch (error) {
@@ -158,22 +171,99 @@ const startServer = async () => {
       },
     });
 
-    // Socket.io setup for real-time discussions
+    // Socket.io setup for real-time discussions and groups
     io.on('connection', (socket) => {
       console.log('User connected:', socket.id);
 
+      // Study Group Events
+      socket.on('joinGroup', (groupId) => {
+        socket.join(`group:${groupId}`);
+        console.log(`User ${socket.id} joined group ${groupId}`);
+        socket.to(`group:${groupId}`).emit('memberJoined', { userId: socket.id });
+      });
+
+      socket.on('leaveGroup', (groupId) => {
+        socket.leave(`group:${groupId}`);
+        console.log(`User ${socket.id} left group ${groupId}`);
+        socket.to(`group:${groupId}`).emit('memberLeft', { userId: socket.id });
+      });
+
+      socket.on('groupMessage', (data) => {
+        const { groupId, message, userId, userName } = data;
+        console.log(`Group ${groupId} message from ${userName}:`, message);
+        socket.to(`group:${groupId}`).emit('newGroupMessage', {
+          message,
+          userId,
+          userName,
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      // Discussion Events
       socket.on('joinDiscussion', (discussionId) => {
-        socket.join(discussionId);
+        socket.join(`discussion:${discussionId}`);
         console.log(`User ${socket.id} joined discussion ${discussionId}`);
       });
 
       socket.on('leaveDiscussion', (discussionId) => {
-        socket.leave(discussionId);
+        socket.leave(`discussion:${discussionId}`);
         console.log(`User ${socket.id} left discussion ${discussionId}`);
       });
 
       socket.on('newComment', (data) => {
-        socket.to(data.discussionId).emit('commentReceived', data);
+        const { discussionId, comment, userId, userName } = data;
+        console.log(`Discussion ${discussionId} comment from ${userName}:`, comment);
+        socket.to(`discussion:${discussionId}`).emit('commentReceived', {
+          comment,
+          userId,
+          userName,
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      // Typing indicators
+      socket.on('typingStart', (data) => {
+        const { groupId, discussionId, userName } = data;
+        if (groupId) {
+          socket.to(`group:${groupId}`).emit('userTyping', { userName, isTyping: true });
+        } else if (discussionId) {
+          socket.to(`discussion:${discussionId}`).emit('userTyping', { userName, isTyping: true });
+        }
+      });
+
+      socket.on('typingStop', (data) => {
+        const { groupId, discussionId, userName } = data;
+        if (groupId) {
+          socket.to(`group:${groupId}`).emit('userTyping', { userName, isTyping: false });
+        } else if (discussionId) {
+          socket.to(`discussion:${discussionId}`).emit('userTyping', { userName, isTyping: false });
+        }
+      });
+
+      // Video/Audio call events for group study sessions
+      socket.on('joinStudySession', (sessionId) => {
+        socket.join(`session:${sessionId}`);
+        socket.to(`session:${sessionId}`).emit('userJoined', { userId: socket.id });
+      });
+
+      socket.on('offer', (data) => {
+        const { to, offer } = data;
+        socket.to(to).emit('offer', { from: socket.id, offer });
+      });
+
+      socket.on('answer', (data) => {
+        const { to, answer } = data;
+        socket.to(to).emit('answer', { from: socket.id, answer });
+      });
+
+      socket.on('ice-candidate', (data) => {
+        const { to, candidate } = data;
+        socket.to(to).emit('ice-candidate', { from: socket.id, candidate });
+      });
+
+      socket.on('leaveStudySession', (sessionId) => {
+        socket.leave(`session:${sessionId}`);
+        socket.to(`session:${sessionId}`).emit('userLeft', { userId: socket.id });
       });
 
       socket.on('disconnect', () => {
@@ -189,9 +279,12 @@ const startServer = async () => {
       console.log(`📊 Progress API: http://localhost:${PORT}/api/progress`);
       console.log(`📈 Dashboard API: http://localhost:${PORT}/api/dashboard`);
       console.log(`🏠 Homepage API: http://localhost:${PORT}/api/homepage`);
-      console.log(`🎤 Interview API: http://localhost:${PORT}/api/interview`); // Add this line
+      console.log(`🎤 Interview API: http://localhost:${PORT}/api/interview`);
+      console.log(`👥 Groups API: http://localhost:${PORT}/api/groups`);
+      console.log(`💬 Discussions API: http://localhost:${PORT}/api/discussions`);
       console.log(`👤 Demo login: POST http://localhost:${PORT}/api/auth/demo-login`);
       console.log(`📱 Frontend: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+      console.log(`🔌 WebSocket: ws://localhost:${PORT}`);
     });
 
     // Graceful shutdown

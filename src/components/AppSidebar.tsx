@@ -53,6 +53,8 @@ const menuItems = [
     items: [
       { name: "Mentorship", icon: GraduationCap, path: "/mentorship" },
       { name: "Settings", icon: Settings, path: "/settings" },
+      { name: "Study Groups", icon: Users, path: "/study-groups" },
+      { name: "Forum", icon: BookOpen, path: "/forum" }, 
     ],
   },
 ];
