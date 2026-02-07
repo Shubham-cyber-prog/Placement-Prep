@@ -9,6 +9,7 @@ import profileRoutes from "./routes/profile.routes.js";
 import topicRoutes from "./routes/topic.routes.js";
 import problemRoutes from "./routes/problem.routes.js";
 import rankingRoutes from "./routes/ranking.routes.js";
+import achievementRoutes from "./routes/achievement.routes.js";
 import groupRoutes from "./routes/group.routes.js";
 import discussionRoutes from "./routes/discussion.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
@@ -75,6 +76,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/topics", topicRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/rankings", rankingRoutes);
+app.use("/api/achievements", achievementRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.get("/api/mock-tests", (req, res) => {

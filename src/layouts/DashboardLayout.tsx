@@ -31,7 +31,7 @@ const DashboardLayout = () => {
       <div className="min-h-screen bg-background smooth-transition flex flex-col">
         <AppSidebar />
 
-        <div className="ml-64 min-h-screen smooth-transition ease-out flex-1">
+        <div className="ml-64 flex-1 flex flex-col smooth-transition ease-out">
           <header className="sticky top-0 z-30 h-16 glass border-b border-border/50">
             <div className="flex items-center justify-between h-full px-6">
               <div className="flex-1 max-w-md">
@@ -73,7 +73,7 @@ const DashboardLayout = () => {
             </div>
           </header>
 
-          <main className="p-6">
+          <main className="p-6 flex-1">
             <motion.div
               key={location.pathname} // Adding key ensures the animation triggers on route change
               initial={{ opacity: 0, y: 20 }}
