@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, MessageCircle } from "lucide-react";
+import { Users, Plus, MessageCircle, Code } from "lucide-react";
 
 const StudyGroups = () => {
   const [groups, setGroups] = useState([]);
@@ -119,6 +119,10 @@ const StudyGroups = () => {
                 <Button variant="outline" size="sm">
                   <MessageCircle className="w-4 h-4 mr-1" />
                   Discussions
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Code className="w-4 h-4 mr-1" />
+                  Code Together
                 </Button>
               </div>
             </CardContent>

@@ -11,6 +11,7 @@ import problemRoutes from "./routes/problem.routes.js";
 import rankingRoutes from "./routes/ranking.routes.js";
 import groupRoutes from "./routes/group.routes.js";
 import discussionRoutes from "./routes/discussion.routes.js";
+import sessionRoutes from "./routes/session.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -75,6 +76,7 @@ app.use("/api/topics", topicRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/rankings", rankingRoutes);
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/sessions", sessionRoutes);
 app.get("/api/mock-tests", (req, res) => {
   res.json({
     success: true,
@@ -109,10 +111,11 @@ const io = new Server(server, {
   },
 });
 
-// Socket.io setup for real-time discussions
+// Socket.io setup for real-time discussions and collaborative coding
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Discussion events
   socket.on('joinDiscussion', (discussionId) => {
     socket.join(discussionId);
     console.log(`User ${socket.id} joined discussion ${discussionId}`);
@@ -125,6 +128,44 @@ io.on('connection', (socket) => {
 
   socket.on('newComment', (data) => {
     socket.to(data.discussionId).emit('commentReceived', data);
+  });
+
+  // Collaborative coding session events
+  socket.on('joinSession', (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${socket.id} joined coding session ${roomId}`);
+    socket.to(roomId).emit('userJoined', { userId: socket.id });
+  });
+
+  socket.on('leaveSession', (roomId) => {
+    socket.leave(roomId);
+    console.log(`User ${socket.id} left coding session ${roomId}`);
+    socket.to(roomId).emit('userLeft', { userId: socket.id });
+  });
+
+  socket.on('codeChange', (data) => {
+    socket.to(data.roomId).emit('codeUpdate', { code: data.code, userId: socket.id });
+  });
+
+  socket.on('cursorMove', (data) => {
+    socket.to(data.roomId).emit('cursorUpdate', { position: data.position, userId: socket.id });
+  });
+
+  socket.on('sendMessage', (data) => {
+    socket.to(data.roomId).emit('messageReceived', { message: data.message, userId: socket.id, timestamp: new Date() });
+  });
+
+  // WebRTC signaling for video/audio
+  socket.on('webrtcOffer', (data) => {
+    socket.to(data.roomId).emit('webrtcOffer', { offer: data.offer, from: socket.id });
+  });
+
+  socket.on('webrtcAnswer', (data) => {
+    socket.to(data.roomId).emit('webrtcAnswer', { answer: data.answer, from: socket.id });
+  });
+
+  socket.on('webrtcIceCandidate', (data) => {
+    socket.to(data.roomId).emit('webrtcIceCandidate', { candidate: data.candidate, from: socket.id });
   });
 
   socket.on('disconnect', () => {
