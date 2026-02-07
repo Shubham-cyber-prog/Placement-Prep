@@ -7,7 +7,7 @@ import {
   Brain,
   Building2,
   FileText,
-  Users,
+  Users,User2,
   BookOpen,
   Trophy,
   Settings,
@@ -25,7 +25,7 @@ const menuItems = [
   {
     title: "Main",
     items: [
-      { name: "Dashboard", icon: LayoutDashboard, path: "/" },
+      { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
       { name: "My Progress", icon: Target, path: "/my-progress" },
       { name: "My Learning Path", icon: BookOpen, path: "/learning-path" },
     ],
@@ -36,6 +36,7 @@ const menuItems = [
       { name: "DSA Practice", icon: Code2, path: "/dsa" },
       { name: "Aptitude", icon: Brain, path: "/aptitude-test" },
       { name: "Interview Prep", icon: Users, path: "/interview-prep" },
+      {name : "Mock Interview", icon: User2, path: "/mock-interview" },
       { name: "System Design", icon: Lightbulb, path: "/system-design" },
     ],
   },
@@ -54,6 +55,8 @@ const menuItems = [
       { name: "Leaderboard", icon: Trophy, path: "/leaderboard" },
       { name: "Mentorship", icon: GraduationCap, path: "/mentorship" },
       { name: "Settings", icon: Settings, path: "/settings" },
+      { name: "Study Groups", icon: Users, path: "/study-groups" },
+      { name: "Forum", icon: BookOpen, path: "/forum" }, 
     ],
   },
 ];

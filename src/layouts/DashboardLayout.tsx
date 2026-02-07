@@ -53,9 +53,13 @@ const DashboardLayout = () => {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium text-foreground">{displayName}</p>
-                    <p className="text-xs text-muted-foreground">Premium User</p>
-                  </div>
+  <p className="text-sm font-medium text-foreground">
+    {localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).name : "User"}
+  </p>
+  <p className="text-xs text-muted-foreground">
+    {localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).role : "User"}
+  </p>
+</div>
 
                   {/* UPDATED BUTTON: Added handleProfileClick and active state styling */}
                   <button
