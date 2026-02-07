@@ -67,7 +67,7 @@ const App = () => {
               <Route path="/forum" element={<Forum />} />
               
               {/* Discussion Detail - Use consistent naming */}
-              <Route path="/discussion/:id" element={<DiscussionDetail />} />
+              <Route path="/discussions/:id" element={<DiscussionDetail />} />
               
               <Route path="/aptitude-test" element={<AptitudePage />} />
               <Route path="/resume" element={<ResumeBuilder />} />

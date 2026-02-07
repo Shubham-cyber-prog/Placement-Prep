@@ -9,7 +9,6 @@ import {
   LogOut, X, Send, Code2, Brain,
   Lightbulb, Calendar, User, CheckCircle
 } from "lucide-react";
-import { onAuthStateChanged } from "firebase/auth";
 
 const DiscussionCard = ({ discussion, onClick }) => {
   return (
@@ -107,23 +106,25 @@ const CreateDiscussionModal = ({ isOpen, onClose, onSubmit }) => {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Discussion Title</label>
+            <label className="block text-sm font-medium mb-2">Discussion Title*</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
               className="w-full glass-input rounded-xl p-3"
               placeholder="What's your question or topic?"
+              required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Content</label>
+            <label className="block text-sm font-medium mb-2">Content*</label>
             <textarea
               value={formData.content}
               onChange={(e) => setFormData({...formData, content: e.target.value})}
               className="w-full glass-input rounded-xl p-3 min-h-[200px]"
               placeholder="Describe your discussion in detail..."
+              required
             />
           </div>
 
@@ -138,33 +139,9 @@ const CreateDiscussionModal = ({ isOpen, onClose, onSubmit }) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Group (optional)</label>
-              <select
-                value={formData.groupId}
-                onChange={(e) => setFormData({...formData, groupId: e.target.value})}
-                className="w-full glass-input rounded-xl p-3"
-              >
-                <option value="">Select a group</option>
-                <option value="group1">DSA Mastery</option>
-                <option value="group2">Interview Prep</option>
-                <option value="group3">System Design</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Problem (optional)</label>
-              <select
-                value={formData.problemId}
-                onChange={(e) => setFormData({...formData, problemId: e.target.value})}
-                className="w-full glass-input rounded-xl p-3"
-              >
-                <option value="">Select a problem</option>
-                <option value="problem1">Two Sum</option>
-                <option value="problem2">Reverse Linked List</option>
-                <option value="problem3">Binary Tree Inorder</option>
-              </select>
-            </div>
+          {/* REMOVE the group and problem dropdowns for now, or fetch real data */}
+          <div className="text-sm text-gray-400">
+            <p>Note: Group and problem associations will be added in a future update.</p>
           </div>
         </div>
 
@@ -177,6 +154,15 @@ const CreateDiscussionModal = ({ isOpen, onClose, onSubmit }) => {
           </button>
           <button
             onClick={() => {
+              // Validate required fields
+              if (!formData.title.trim()) {
+                alert('Title is required');
+                return;
+              }
+              if (!formData.content.trim()) {
+                alert('Content is required');
+                return;
+              }
               onSubmit(formData);
               onClose();
             }}
@@ -190,6 +176,7 @@ const CreateDiscussionModal = ({ isOpen, onClose, onSubmit }) => {
     </div>
   );
 };
+
 
 const Forum = () => {
   const [discussions, setDiscussions] = useState([]);
@@ -233,29 +220,46 @@ const Forum = () => {
     }
   }, []);
 
-  const fetchDiscussions = async (token) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/discussions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+  // In Forum.jsx - fetchDiscussions function
+const fetchDiscussions = async (token) => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${API_BASE_URL}/api/discussions`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setDiscussions(data.data.discussions || []);
-          setFilteredDiscussions(data.data.discussions || []);
-        }
+    const responseText = await response.text();
+    console.log('Discussions response:', responseText);
+    
+    if (!response.ok) {
+      try {
+        const errorData = JSON.parse(responseText);
+        throw new Error(errorData.message || `Failed to fetch discussions (${response.status})`);
+      } catch (e) {
+        throw new Error(`Failed to fetch discussions (${response.status})`);
       }
-    } catch (error) {
-      console.error('Failed to fetch discussions:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    const data = JSON.parse(responseText);
+    if (data.success) {
+      console.log('Discussions data:', data.data);
+      setDiscussions(data.data.discussions || []);
+      setFilteredDiscussions(data.data.discussions || []);
+    } else {
+      throw new Error(data.message || 'Failed to fetch discussions');
+    }
+  } catch (error) {
+    console.error('Failed to fetch discussions:', error);
+    alert(`Error loading discussions: ${error.message}`);
+    setDiscussions([]);
+    setFilteredDiscussions([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSearch = (e) => {
     const value = e.target.value;
@@ -319,16 +323,18 @@ const Forum = () => {
   if (!userToken) return;
   
   try {
-    // Prepare the data in the correct format expected by backend
+    // Prepare the data - DO NOT send "group1" or "problem2" strings
+    // These should be actual MongoDB ObjectId values or null
     const formattedData = {
       title: discussionData.title,
       content: discussionData.content,
       tags: discussionData.tags ? discussionData.tags.split(',').map(tag => tag.trim()) : [],
-      groupId: discussionData.groupId || null,
-      problemId: discussionData.problemId || null
+      // Set these to null since we don't have real group/problem IDs
+      groupId: null,
+      problemId: null
     };
 
-    console.log('Sending discussion data:', formattedData); // For debugging
+    console.log('Sending discussion data:', formattedData);
 
     const response = await fetch(`${API_BASE_URL}/api/discussions`, {
       method: 'POST',
@@ -582,10 +588,10 @@ const Forum = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <DiscussionCard 
-                  discussion={discussion} 
-                  onClick={(d) => navigate(`/discussions/${d._id}`)} 
-                />
+<DiscussionCard 
+  discussion={discussion} 
+  onClick={(d) => navigate(`/discussions/${d._id}`)} 
+/>
               </motion.div>
             ))}
           </div>
