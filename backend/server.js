@@ -21,6 +21,7 @@ import discussionRoutes from "./routes/discussion.routes.js"; // Add this import
 // Import models to initialize them
 import "./models/Group.model.js";
 import "./models/Discussion.model.js";
+import './models/PracticeProblem.model.js';
 
 dotenv.config();
 

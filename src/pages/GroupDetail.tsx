@@ -6,7 +6,7 @@ import {
   Settings, Hash, Globe, Lock, 
   ChevronLeft, ExternalLink, Bell,
   MoreVertical, Edit, Trash2, LogOut,
-  AlertCircle, RefreshCw
+  AlertCircle, RefreshCw, Target
 } from 'lucide-react';
 
 const GroupDetail = () => {
@@ -30,61 +30,48 @@ const GroupDetail = () => {
   }, [id]);
 
   const fetchGroupDetails = async (token) => {
-  try {
-    setLoading(true);
-    setError(null);
-    
-    console.log(`Fetching group details for ID: ${id}`);
-    
-    const response = await fetch(`${API_BASE_URL}/api/groups/${id}`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-    });
-
-    console.log('Response status:', response.status);
-    
-    // Try to get the actual error response from backend
-    const responseText = await response.text();
-    console.log('Raw response:', responseText);
-    
-    if (!response.ok) {
-      let errorMessage = `Failed to fetch group: ${response.status}`;
-      let errorDetails = '';
+    try {
+      setLoading(true);
+      setError(null);
       
-      try {
-        // Try to parse as JSON
-        const errorData = JSON.parse(responseText);
-        errorMessage = errorData.message || errorMessage;
-        errorDetails = errorData.error || errorData.details || '';
-      } catch (e) {
-        // If not JSON, use the raw text
-        errorMessage = responseText || errorMessage;
+      console.log(`Fetching group details for ID: ${id}`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/groups/${id}`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Failed to fetch group: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = `HTTP error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
-      
-      throw new Error(`${errorMessage} ${errorDetails ? `- ${errorDetails}` : ''}`);
-    }
 
-    // Parse the successful response
-    const data = JSON.parse(responseText);
-    console.log('Group data:', data);
-    
-    if (data.success) {
-      setGroup(data.data.group);
-      setIsMember(data.data.isMember);
-      // Fetch group discussions
-      fetchGroupDiscussions(token);
-    } else {
-      throw new Error(data.message || 'Failed to load group data');
+      const data = await response.json();
+      console.log('Group data:', data);
+      
+      if (data.success) {
+        setGroup(data.data.group);
+        setIsMember(data.data.isMember);
+        // Fetch group discussions
+        fetchGroupDiscussions(token);
+      } else {
+        throw new Error(data.message || 'Failed to load group data');
+      }
+    } catch (error) {
+      console.error('Error fetching group:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching group:', error);
-    setError(`Error: ${error.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const fetchGroupDiscussions = async (token) => {
     try {
@@ -125,11 +112,17 @@ const GroupDetail = () => {
       });
 
       if (response.ok) {
-        setIsMember(true);
-        setGroup(prev => ({ 
-          ...prev, 
-          memberCount: (prev.memberCount || 0) + 1 
-        }));
+        const data = await response.json();
+        if (data.success) {
+          setIsMember(true);
+          setGroup(prev => ({ 
+            ...prev, 
+            members: [...(prev.members || []), { _id: 'current-user' }],
+            memberCount: (prev.memberCount || 0) + 1 
+          }));
+        } else {
+          throw new Error(data.message || 'Failed to join group');
+        }
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to join group');
@@ -152,11 +145,17 @@ const GroupDetail = () => {
       });
 
       if (response.ok) {
-        setIsMember(false);
-        setGroup(prev => ({ 
-          ...prev, 
-          memberCount: Math.max(0, (prev.memberCount || 1) - 1) 
-        }));
+        const data = await response.json();
+        if (data.success) {
+          setIsMember(false);
+          setGroup(prev => ({ 
+            ...prev, 
+            members: (prev.members || []).filter(m => m._id !== 'current-user'),
+            memberCount: Math.max(0, (prev.memberCount || 1) - 1) 
+          }));
+        } else {
+          throw new Error(data.message || 'Failed to leave group');
+        }
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to leave group');
@@ -187,7 +186,6 @@ const GroupDetail = () => {
           </div>
           <h3 className="text-xl font-bold mb-2">Error Loading Group</h3>
           <p className="text-gray-400 mb-4">{error || 'Group not found'}</p>
-          <p className="text-sm text-gray-500 mb-6">Group ID: {id}</p>
           <div className="flex gap-3">
             <button
               onClick={() => navigate('/study-groups')}
@@ -207,7 +205,6 @@ const GroupDetail = () => {
     );
   }
 
-  // Rest of your component remains the same...
   return (
     <div className="min-h-screen p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -254,7 +251,7 @@ const GroupDetail = () => {
             <div className="flex items-center gap-4 mb-4">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-r from-[#00d4aa] to-[#00b4d8] flex items-center justify-center">
                 <span className="text-3xl font-bold text-white">
-                  {group.name?.charAt(0).toUpperCase()}
+                  {group.name?.charAt(0).toUpperCase() || 'G'}
                 </span>
               </div>
               <div>
@@ -263,7 +260,7 @@ const GroupDetail = () => {
                   {group.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                   {group.isPublic ? 'Public Group' : 'Private Group'}
                   <span className="mx-2">•</span>
-                  <Users className="w-4 h-4" /> {group.memberCount || 0} members
+                  <Users className="w-4 h-4" /> {group.memberCount || group.members?.length || 0} members
                 </p>
               </div>
             </div>
@@ -279,7 +276,7 @@ const GroupDetail = () => {
             </div>
           </div>
 
-          {group.isOwner && (
+          {group.creator?._id === JSON.parse(localStorage.getItem('user'))?._id && (
             <button className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all">
               <Settings className="w-5 h-5" />
             </button>
@@ -288,9 +285,9 @@ const GroupDetail = () => {
       </motion.div>
 
       {/* Group Content */}
-      <div className="grid grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column - Discussions */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <div className="glass rounded-3xl p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Recent Discussions</h2>
@@ -318,15 +315,15 @@ const GroupDetail = () => {
               <div className="space-y-4">
                 {discussions.map(discussion => (
                   <div
-                    key={discussion._id}
+                    key={discussion._id || discussion.id}
                     className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-[#00d4aa]/30 transition-all cursor-pointer"
-                    onClick={() => navigate(`/discussion/${discussion._id}`)}
+                    onClick={() => navigate(`/discussion/${discussion._id || discussion.id}`)}
                   >
                     <h3 className="font-bold mb-2">{discussion.title}</h3>
                     <p className="text-sm text-gray-400 mb-3 line-clamp-2">{discussion.content}</p>
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-4 text-gray-400">
-                        <span>{discussion.author?.name}</span>
+                        <span>{discussion.author?.name || 'Anonymous'}</span>
                         <span>{new Date(discussion.createdAt).toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -351,7 +348,7 @@ const GroupDetail = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Members</span>
-                <span className="font-bold">{group.memberCount || 0}</span>
+                <span className="font-bold">{group.memberCount || group.members?.length || 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Discussions</span>
@@ -368,17 +365,19 @@ const GroupDetail = () => {
           <div className="glass rounded-3xl p-6">
             <h3 className="text-lg font-bold mb-4">Top Members</h3>
             <div className="space-y-3">
-              {group.topMembers?.slice(0, 5).map(member => (
-                <div key={member._id} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg">
+              {group.members?.slice(0, 5).map(member => (
+                <div key={member._id || member.id} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#00b4d8] flex items-center justify-center">
                       <span className="text-xs font-bold text-white">
-                        {member.name?.charAt(0).toUpperCase()}
+                        {member.name?.charAt(0).toUpperCase() || 'U'}
                       </span>
                     </div>
-                    <span>{member.name}</span>
+                    <span>{member.name || 'Anonymous'}</span>
                   </div>
-                  <span className="text-xs text-gray-400">{member.postCount} posts</span>
+                  <span className="text-xs text-gray-400">
+                    {member.isCreator ? 'Creator' : 'Member'}
+                  </span>
                 </div>
               ))}
             </div>

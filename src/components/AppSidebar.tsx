@@ -52,6 +52,7 @@ const menuItems = [
   {
     title: "More",
     items: [
+      { name: "Leaderboard", icon: Trophy, path: "/leaderboard" },
       { name: "Mentorship", icon: GraduationCap, path: "/mentorship" },
       { name: "Settings", icon: Settings, path: "/settings" },
       { name: "Study Groups", icon: Users, path: "/study-groups" },

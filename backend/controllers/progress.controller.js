@@ -1,6 +1,7 @@
 import Progress from "../models/Progress.model.js";
 import PracticeProblem from "../models/PracticeProblem.js";
 import Topic from "../models/Topic.js";
+import { awardAchievement } from "./achievement.controller.js";
 
 export const getUserProgress = async (req, res, next) => {
     try {
@@ -94,6 +95,11 @@ export const logProgress = async (req, res, next) => {
             { upsert: true, new: true }
         ).populate('topic', 'name').populate('problem', 'title difficulty');
 
+        // Check for achievements if problem was completed
+        if (completionStatus === 'completed') {
+            await checkAndAwardAchievements(req.user._id, problem);
+        }
+
         res.json(progress);
     } catch (error) {
         next(error);
@@ -119,5 +125,47 @@ export const updateProgressTime = async (req, res, next) => {
         res.json(progress);
     } catch (error) {
         next(error);
+    }
+};
+
+// Achievement checking logic
+const checkAndAwardAchievements = async (userId, problem) => {
+    try {
+        // Get user's total solved problems
+        const solvedCount = await Progress.countDocuments({
+            user: userId,
+            completionStatus: 'completed'
+        });
+
+        // First solve achievement
+        if (solvedCount === 1) {
+            await awardAchievement(userId, 'badge', 'First Steps', 'Solved your first problem!', 10);
+        }
+
+        // Problem solver milestones
+        const milestones = [5, 10, 25, 50, 100];
+        for (const milestone of milestones) {
+            if (solvedCount === milestone) {
+                await awardAchievement(userId, 'badge', `${milestone} Problems Solved`, `Solved ${milestone} problems!`, milestone * 2);
+                break;
+            }
+        }
+
+        // Difficulty-specific achievements
+        const difficultyCount = await Progress.countDocuments({
+            user: userId,
+            completionStatus: 'completed',
+            difficulty: problem.difficulty
+        });
+
+        if (difficultyCount === 1) {
+            await awardAchievement(userId, 'badge', `First ${problem.difficulty} Problem`, `Solved your first ${problem.difficulty.toLowerCase()} problem!`, 5);
+        }
+
+        // Streak achievements (simplified - check consecutive days)
+        // This would need more complex logic for actual streaks
+
+    } catch (error) {
+        console.error('Error checking achievements:', error);
     }
 };
