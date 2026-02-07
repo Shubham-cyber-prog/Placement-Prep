@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Search, Bell, User } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
 import PageLoader from "@/components/PageLoader";
+import Footer from "@/footer/Footer";
 
 const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
@@ -27,10 +28,10 @@ const DashboardLayout = () => {
     <>
       <AnimatePresence>{loading && <PageLoader />}</AnimatePresence>
 
-      <div className="min-h-screen bg-background smooth-transition">
+      <div className="min-h-screen bg-background smooth-transition flex flex-col">
         <AppSidebar />
 
-        <div className="ml-64 min-h-screen smooth-transition ease-out">
+        <div className="ml-64 flex-1 flex flex-col smooth-transition ease-out">
           <header className="sticky top-0 z-30 h-16 glass border-b border-border/50">
             <div className="flex items-center justify-between h-full px-6">
               <div className="flex-1 max-w-md">
@@ -45,7 +46,7 @@ const DashboardLayout = () => {
               </div>
 
               <div className="flex items-center gap-4">
-                <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
+                <button className="relative p-2 rounded-lg hover:bg-muted transition-colors" aria-label="Notifications">
                   <Bell className="w-5 h-5 text-muted-foreground" />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
                 </button>
@@ -76,7 +77,7 @@ const DashboardLayout = () => {
             </div>
           </header>
 
-          <main className="p-6">
+          <main className="p-6 flex-1">
             <motion.div
               key={location.pathname} // Adding key ensures the animation triggers on route change
               initial={{ opacity: 0, y: 20 }}
@@ -87,6 +88,8 @@ const DashboardLayout = () => {
             </motion.div>
           </main>
         </div>
+
+        <Footer />
       </div>
     </>
   );
