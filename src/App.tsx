@@ -7,6 +7,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import Index from "./pages/Index";
 import Homepage from "./pages/Homepage";
 import Auth from "./components/Auth";
+import Achievements from './pages/Achievements';
 import DSA from "./pages/DSA";
 import InterviewPreparationPlatform from "./pages/InterviewPrep";
 import MockTest from "./pages/MockTest";
@@ -50,6 +51,7 @@ const App = () => {
               <Route path="/dsa/problem/:id" element={<ProblemDetail />} />
               <Route path="/study-material" element={<StudyMaterial />} />
               <Route path="/system-design" element={<SystemDesign />} />
+              <Route path="/achievements" element={<Achievements />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/my-progress" element={<MyProgress />} />
               <Route path="/mentorship" element={<Mentorship />} />

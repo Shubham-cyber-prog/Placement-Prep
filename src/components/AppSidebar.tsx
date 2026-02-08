@@ -54,9 +54,10 @@ const menuItems = [
     items: [
       { name: "Leaderboard", icon: Trophy, path: "/leaderboard" },
       { name: "Mentorship", icon: GraduationCap, path: "/mentorship" },
-      { name: "Settings", icon: Settings, path: "/settings" },
+      { name: "Achievements", icon: Trophy, path: "/achievements" },
       { name: "Study Groups", icon: Users, path: "/study-groups" },
-      { name: "Forum", icon: BookOpen, path: "/forum" }, 
+      { name: "Forum", icon: BookOpen, path: "/forum" },
+      { name: "Settings", icon: Settings, path: "/settings" }
     ],
   },
 ];

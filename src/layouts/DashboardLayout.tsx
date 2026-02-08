@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Search, Bell, User } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
 import PageLoader from "@/components/PageLoader";
-import Footer from "@/footer/Footer";
 
 const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
@@ -89,7 +88,7 @@ const DashboardLayout = () => {
           </main>
         </div>
 
-        <Footer />
+        
       </div>
     </>
   );

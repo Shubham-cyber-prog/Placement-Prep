@@ -216,7 +216,16 @@ const Activity = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
   </svg>
 );
-
+const formatName = (name) => {
+  if (!name) return 'Guest';
+  
+  // Split by spaces and capitalize each word
+  return name
+    .trim()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 const Index = () => {
   const [displayName, setDisplayName] = useState("Guest");
   const [dashboardData, setDashboardData] = useState(null);
@@ -228,48 +237,58 @@ const Index = () => {
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
   // Fetch dashboard data
-  const fetchDashboardData = async (token) => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Fetch dashboard data
+const fetchDashboardData = async (token) => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      if (!token) {
-        throw new Error('Please login to view dashboard');
-      }
-
-      // Fetch dashboard data
-      const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Clear tokens and redirect
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('jwtToken');
-          setUserToken(null);
-          navigate('/auth');
-          return;
-        }
-        throw new Error(`Failed to fetch dashboard: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setDashboardData(data.data);
-      } else {
-        throw new Error(data.message || 'Failed to load dashboard data');
-      }
-    } catch (err) {
-      setError(err.message);
-      console.error('Dashboard fetch error:', err);
-    } finally {
-      setLoading(false);
+    if (!token) {
+      throw new Error('Please login to view dashboard');
     }
-  };
+
+    // Fetch dashboard data
+    const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        // Clear tokens and redirect
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('jwtToken');
+        setUserToken(null);
+        navigate('/auth');
+        return;
+      }
+      throw new Error(`Failed to fetch dashboard: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      setDashboardData(data.data);
+      
+      // FIX: Set display name from dashboard data if available
+      if (data.data.user?.name) {
+        const formattedName = formatName(data.data.user.name);
+        setDisplayName(formattedName);
+        // Also update localStorage
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+      }
+    } else {
+      throw new Error(data.message || 'Failed to load dashboard data');
+    }
+  } catch (err) {
+    setError(err.message);
+    console.error('Dashboard fetch error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Handle Firebase authentication and get JWT token
   const handleFirebaseAuth = async (firebaseUser) => {
