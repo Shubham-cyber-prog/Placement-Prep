@@ -17,6 +17,7 @@ import homepageRoutes from "./routes/homepageRoutes.js";
 import interviewRoutes from "./routes/interview.routes.js";
 import groupRoutes from "./routes/group.routes.js"; // Add this import
 import discussionRoutes from "./routes/discussion.routes.js"; // Add this import
+import achievementRoutes from "./routes/achievement.routes.js";
 
 // Import models to initialize them
 import "./models/Group.model.js";
@@ -81,6 +82,7 @@ app.use("/api/homepage", homepageRoutes);
 app.use("/api/interview", interviewRoutes);
 app.use("/api/groups", groupRoutes); // Add this line
 app.use("/api/discussions", discussionRoutes); // Add this line
+app.use("/api/achievements", achievementRoutes);
 
 // Welcome route
 app.get("/", (req, res) => {
