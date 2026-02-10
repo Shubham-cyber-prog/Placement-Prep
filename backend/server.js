@@ -13,6 +13,8 @@ import achievementRoutes from "./routes/achievement.routes.js";
 import groupRoutes from "./routes/group.routes.js";
 import discussionRoutes from "./routes/discussion.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
+import questionsRoutes from "./routes/questions.routes.js";
+import mocktestsRoutes from "./routes/mocktests.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -59,17 +61,6 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Simple test routes (remove imports for now)
-app.get("/api/questions", (req, res) => {
-  res.json({
-    success: true,
-    questions: [
-      { id: 1, question: "Explain closure in JavaScript", difficulty: "Medium" },
-      { id: 2, question: "What is React virtual DOM?", difficulty: "Easy" }
-    ]
-  });
-});
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
@@ -79,15 +70,8 @@ app.use("/api/rankings", rankingRoutes);
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/sessions", sessionRoutes);
-app.get("/api/mock-tests", (req, res) => {
-  res.json({
-    success: true,
-    tests: [
-      { id: 1, name: "FAANG Mock Test", difficulty: "Hard" },
-      { id: 2, name: "DSA Basics", difficulty: "Medium" }
-    ]
-  });
-});
+app.use("/api/questions", questionsRoutes);
+app.use("/api/mock-tests", mocktestsRoutes);
 
 // Database connection (optional - you can start without DB first)
 const MONGODB_URI = process.env.MONGODB_URI;
