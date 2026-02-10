@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Search, Bell, User } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
 import PageLoader from "@/components/PageLoader";
-import Footer from "@/footer/Footer";
 
 const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
@@ -53,9 +52,13 @@ const DashboardLayout = () => {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium text-foreground">{displayName}</p>
-                    <p className="text-xs text-muted-foreground">Premium User</p>
-                  </div>
+  <p className="text-sm font-medium text-foreground">
+    {localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).name : "User"}
+  </p>
+  <p className="text-xs text-muted-foreground">
+    {localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).role : "User"}
+  </p>
+</div>
 
                   {/* UPDATED BUTTON: Added handleProfileClick and active state styling */}
                   <button
@@ -85,7 +88,7 @@ const DashboardLayout = () => {
           </main>
         </div>
 
-        <Footer />
+        
       </div>
     </>
   );

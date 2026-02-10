@@ -13,26 +13,31 @@ import {
   getInterviewFeedback,
   getRecommendedInterviews
 } from "../controllers/interview.controller.js";
-import { protect } from "../middlewares/auth.middleware.js";
+import { adminMiddleware as protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// All routes protected
+// All routes require authentication
 router.use(protect);
 
+// Mock interview routes
 router.get("/mock", getMockInterview);
-router.get("/history", getInterviewHistory);
-router.get("/analytics", getInterviewAnalytics);
 router.get("/questions", getInterviewQuestions);
 router.get("/tips", getInterviewTips);
-router.get("/feedback/:id", getInterviewFeedback);
+
+// Interview scheduling and management
+router.post("/schedule", scheduleInterview);
+router.post("/:id/cancel", cancelInterview);
+router.get("/history", getInterviewHistory);
 router.get("/recommended", getRecommendedInterviews);
 
-router.post("/schedule", scheduleInterview);
+// Interview simulation and submission
 router.post("/simulate", simulateInterview);
 router.post("/submit", submitInterviewResponse);
 router.post("/recording", saveInterviewRecording);
 
-router.patch("/cancel/:id", cancelInterview);
+// Analytics and feedback
+router.get("/analytics", getInterviewAnalytics);
+router.get("/:id/feedback", getInterviewFeedback);
 
 export default router;

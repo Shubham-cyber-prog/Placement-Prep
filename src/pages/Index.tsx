@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { auth } from "./firebase"; 
+import { auth } from "../firebase";
+import { RefreshCw } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   Code2,
@@ -22,114 +23,577 @@ import {
   Palette,
   Monitor,
   Rocket,
-  Trophy
+  Trophy,
+  Zap,
+  TrendingDown,
+  PieChart,
+  BarChart3,
+  LineChart,
+  Calendar,
+  Bell,
+  Settings,
+  LogOut
 } from "lucide-react";
 
-// --- YOUR CUSTOM COMPONENT IMPORTS ---
-import StatCard from "@/components/StatCard";
-import CategoryCard from "@/components/CategoryCard";
-import ProgressRing from "@/components/ProgressRing";
-import RecentActivity from "@/components/RecentActivity";
-import UpcomingEvents from "@/components/UpcomingEvents";
-import TopicProgress from "@/components/TopicProgress";
+// Custom components (add these if you don't have them yet)
+const StatCard = ({ 
+  title, 
+  value, 
+  change, 
+  changeType = 'positive', 
+  icon: Icon, 
+  iconColor = "text-[#00d4aa]",
+  delay = 0 
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay }}
+    className="glass p-6 rounded-2xl"
+  >
+    <div className="flex items-center justify-between mb-4">
+      <Icon className={`w-6 h-6 ${iconColor}`} />
+      <span className={`text-xs font-bold px-2 py-1 rounded ${
+        changeType === 'positive' ? 'bg-green-500/20 text-green-400' :
+        changeType === 'negative' ? 'bg-red-500/20 text-red-400' :
+        'bg-yellow-500/20 text-yellow-400'
+      }`}>
+        {change}
+      </span>
+    </div>
+    <h3 className="text-2xl font-bold mb-1">{value}</h3>
+    <p className="text-sm text-gray-400">{title}</p>
+  </motion.div>
+);
 
-// --- DATA STRUCTURES ---
-const categories = [
-  {
-    title: "DSA Practice",
-    description: "Master Data Structures and Algorithms with 500+ coding problems",
-    icon: Code2,
-    count: 500,
-    path: "/dsa",
-    gradient: "linear-gradient(135deg, #00d4aa 0%, #00b4d8 100%)",
-  },
-  {
-    title: "Aptitude",
-    description: "Quantitative, Logical Reasoning & Verbal Ability questions",
-    icon: Brain,
-    count: 300,
-    path: "/aptitude",
-    gradient: "linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)",
-  },
-  {
-    title: "Interview Prep",
-    description: "HR, Technical & Behavioral interview questions bank",
-    icon: Users,
-    count: 200,
-    path: "/interview",
-    gradient: "linear-gradient(135deg, #f59e0b 0%, #f97316 100%)",
-  },
-  {
-    title: "System Design",
-    description: "Learn to design scalable systems for senior roles",
-    icon: Lightbulb,
-    count: 50,
-    path: "/system-design",
-    gradient: "linear-gradient(135deg, #ec4899 0%, #f43f5e 100%)",
-  },
-];
+const CategoryCard = ({ title, description, icon: Icon, count, path, gradient }) => {
+  const navigate = useNavigate();
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => navigate(path)}
+      className="glass p-6 rounded-2xl cursor-pointer hover:border-[#00d4aa]/30 transition-all"
+      style={{ background: gradient + '20' }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="p-3 rounded-xl" style={{ background: gradient }}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        <span className="text-sm font-bold text-[#00d4aa]">{count}+</span>
+      </div>
+      <h3 className="text-lg font-bold mb-2">{title}</h3>
+      <p className="text-sm text-gray-400">{description}</p>
+    </motion.div>
+  );
+};
 
-const topicProgress = [
-  { name: "Arrays & Strings", solved: 45, total: 80, color: "#00d4aa" },
-  { name: "Linked Lists", solved: 20, total: 40, color: "#8b5cf6" },
-  { name: "Trees & Graphs", solved: 15, total: 60, color: "#f59e0b" },
-  { name: "Dynamic Programming", solved: 10, total: 50, color: "#ec4899" },
-  { name: "Sorting & Searching", solved: 30, total: 35, color: "#00b4d8" },
-];
+const ProgressRing = ({ progress, label }) => {
+  const radius = 60;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (progress / 100) * circumference;
 
-const techStack = [
-  { name: "React/Next.js", level: 85, color: "bg-blue-500" },
-  { name: "TypeScript", level: 70, color: "bg-blue-600" },
-  { name: "Tailwind CSS", level: 95, color: "bg-cyan-500" },
-  { name: "State Mgmt", level: 60, color: "bg-purple-500" },
-];
+  return (
+    <div className="relative w-48 h-48">
+      <svg className="w-full h-full transform -rotate-90">
+        <circle
+          cx="96"
+          cy="96"
+          r={radius}
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="12"
+          fill="none"
+        />
+        <circle
+          cx="96"
+          cy="96"
+          r={radius}
+          stroke="url(#gradient)"
+          strokeWidth="12"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <defs>
+          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#00d4aa" />
+            <stop offset="100%" stopColor="#00b4d8" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-bold">{progress}%</span>
+        <span className="text-sm text-gray-400">{label}</span>
+      </div>
+    </div>
+  );
+};
 
+const RecentActivity = ({ activities }) => (
+  <div className="glass rounded-2xl p-6">
+    <h3 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
+      <Activity className="w-5 h-5 text-[#00d4aa]" /> Recent Activity
+    </h3>
+    <div className="space-y-4">
+      {activities?.slice(0, 3).map((activity, index) => (
+        <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-white/5">
+          <div className="p-2 rounded-lg bg-[#00d4aa]/10">
+            {activity.type === 'test_taken' ? <CheckCircle className="w-4 h-4 text-[#00d4aa]" /> :
+             activity.type === 'streak_milestone' ? <Flame className="w-4 h-4 text-orange-500" /> :
+             <Award className="w-4 h-4 text-yellow-500" />}
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-sm">{activity.title}</p>
+            <p className="text-xs text-gray-400">{activity.description}</p>
+            <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const UpcomingEvents = ({ events }) => (
+  <div className="glass rounded-2xl p-6">
+    <h3 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
+      <Calendar className="w-5 h-5 text-[#00d4aa]" /> Upcoming Events
+    </h3>
+    <div className="space-y-4">
+      {events?.slice(0, 3).map((event, index) => (
+        <div key={index} className="p-3 rounded-lg border border-white/10 hover:border-[#00d4aa]/30 transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">{event.title}</span>
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              event.difficulty === 'Beginner' ? 'bg-green-500/20 text-green-400' :
+              event.difficulty === 'Intermediate' ? 'bg-yellow-500/20 text-yellow-400' :
+              'bg-red-500/20 text-red-400'
+            }`}>
+              {event.difficulty}
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 mb-2">{event.description}</p>
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{event.time}</span>
+            <span>{event.duration} min</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const TopicProgress = ({ topics }) => (
+  <div className="glass rounded-3xl p-6">
+    <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+      <TrendingUp className="w-5 h-5 text-[#00d4aa]" /> Topic Progress
+    </h3>
+    <div className="space-y-4">
+      {topics?.map((topic, index) => (
+        <div key={index} className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>{topic.name}</span>
+            <span className="font-bold">{topic.solved}%</span>
+          </div>
+          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${topic.solved}%` }}
+              transition={{ duration: 1, delay: index * 0.1 }}
+              className="h-full rounded-full"
+              style={{ background: topic.color }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Add the Activity icon
+const Activity = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+  </svg>
+);
+const formatName = (name) => {
+  if (!name) return 'Guest';
+  
+  // Split by spaces and capitalize each word
+  return name
+    .trim()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 const Index = () => {
-  const [displayName, setDisplayName] = useState("Candidate");
+  const [displayName, setDisplayName] = useState("Guest");
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [userToken, setUserToken] = useState(null);
   const navigate = useNavigate();
 
+  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+  // Fetch dashboard data
+  // Fetch dashboard data
+const fetchDashboardData = async (token) => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    if (!token) {
+      throw new Error('Please login to view dashboard');
+    }
+
+    // Fetch dashboard data
+    const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        // Clear tokens and redirect
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('jwtToken');
+        setUserToken(null);
+        navigate('/auth');
+        return;
+      }
+      throw new Error(`Failed to fetch dashboard: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      setDashboardData(data.data);
+      
+      // FIX: Set display name from dashboard data if available
+      if (data.data.user?.name) {
+        const formattedName = formatName(data.data.user.name);
+        setDisplayName(formattedName);
+        // Also update localStorage
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+      }
+    } else {
+      throw new Error(data.message || 'Failed to load dashboard data');
+    }
+  } catch (err) {
+    setError(err.message);
+    console.error('Dashboard fetch error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Handle Firebase authentication and get JWT token
+  const handleFirebaseAuth = async (firebaseUser) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/firebase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firebaseUID: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+        }),
+      });
+
+      if (response.ok) {
+        const authData = await response.json();
+        const token = authData.data.token;
+        const user = authData.data.user;
+        
+        // Store token and user info
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        setUserToken(token);
+        setDisplayName(user.name);
+        return token;
+      } else {
+        throw new Error('Failed to authenticate with backend');
+      }
+    } catch (error) {
+      console.error('Firebase auth error:', error);
+      throw error;
+    }
+  };
+
+  // Handle user authentication
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setDisplayName(user.displayName || user.email?.split('@')[0] || "Candidate");
+        try {
+          // Try to get existing token
+          let token = localStorage.getItem('auth_token');
+          
+          if (!token) {
+            // Get new token from Firebase
+            token = await handleFirebaseAuth(user);
+          }
+          
+          if (token) {
+            setUserToken(token);
+            await fetchDashboardData(token);
+          }
+        } catch (error) {
+          console.error('Auth error:', error);
+          setError(error.message);
+          setLoading(false);
+        }
+      } else {
+        // User not logged in
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('jwtToken');
+        setUserToken(null);
+        setDashboardData(null);
+        navigate('/auth');
       }
     });
     return () => unsubscribe();
   }, []);
 
+  // Record activity
+  const recordActivity = async (type, title, description, metadata = {}) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      await fetch(`${API_BASE_URL}/api/dashboard/activity`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type,
+          title,
+          description,
+          metadata
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to record activity:', error);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('jwtToken');
+      setUserToken(null);
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Refresh dashboard
+  const handleRefresh = () => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      fetchDashboardData(token);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#00d4aa] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass p-8 rounded-3xl max-w-md text-center">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Bell className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="text-xl font-bold mb-2">Error Loading Dashboard</h3>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={handleRefresh}
+            className="px-6 py-3 bg-[#00d4aa] text-black rounded-xl font-bold hover:bg-[#00d4aa]/80 transition-all"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400">No dashboard data available</p>
+          <button
+            onClick={() => navigate('/auth')}
+            className="mt-4 px-6 py-3 bg-[#00d4aa] text-black rounded-xl font-bold hover:bg-[#00d4aa]/80 transition-all"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { user, stats, categoryPerformance, skillLevels, recentActivities, upcomingEvents, recommendations, platformStats, leaderboard } = dashboardData;
+
+  // Preparation categories
+  const categories = [
+    {
+      title: "DSA Practice",
+      description: "Master Data Structures and Algorithms with 500+ coding problems",
+      icon: Code2,
+      count: 500,
+      path: "/dsa",
+      gradient: "linear-gradient(135deg, #00d4aa 0%, #00b4d8 100%)",
+    },
+    {
+      title: "Aptitude",
+      description: "Quantitative, Logical Reasoning & Verbal Ability questions",
+      icon: Brain,
+      count: 300,
+      path: "/aptitude",
+      gradient: "linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)",
+    },
+    {
+      title: "Interview Prep",
+      description: "HR, Technical & Behavioral interview questions bank",
+      icon: Users,
+      count: 200,
+      path: "/interview",
+      gradient: "linear-gradient(135deg, #f59e0b 0%, #f97316 100%)",
+    },
+    {
+      title: "System Design",
+      description: "Learn to design scalable systems for senior roles",
+      icon: Lightbulb,
+      count: 50,
+      path: "/system-design",
+      gradient: "linear-gradient(135deg, #ec4899 0%, #f43f5e 100%)",
+    },
+  ];
+
+  // Format topic progress from skill levels
+  const topicProgress = skillLevels?.map(skill => ({
+    name: skill.skill,
+    solved: Math.floor(skill.progress / 10) * 10,
+    total: 100,
+    color: skill.progress > 70 ? "#00d4aa" : skill.progress > 40 ? "#f59e0b" : "#ec4899"
+  })) || [];
+
   return (
-    <div className="space-y-8 pb-12">
-      {/* Welcome Section */}
+    <div className="space-y-8 pb-12 p-6">
+      {/* Header with User Info */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
       >
         <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Welcome back, <span className="gradient-text">{displayName}!</span>
-          </h1>
-          <p className="text-muted-foreground mt-1 flex items-center gap-2">
-            <Rocket className="w-4 h-4 text-primary" /> System Online. Ready to push some pixels today?
-          </p>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#00b4d8] flex items-center justify-center">
+              <span className="font-bold text-lg text-white">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                Welcome back, <span className="gradient-text">{displayName}!</span>
+              </h1>
+              <p className="text-muted-foreground mt-1 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[#00d4aa]" /> 
+                {stats?.consistencyScore > 70 ? "Excellent consistency! 🔥" : 
+                 stats?.consistencyScore > 40 ? "Good progress! 💪" : 
+                 "Let's get started! 🚀"}
+              </p>
+            </div>
+          </div>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate("/dsa")}
-          className="px-6 py-3 rounded-xl font-bold text-primary-foreground flex items-center gap-2 shadow-lg shadow-primary/20"
-          style={{ background: "var(--gradient-primary)" }}
-        >
-          <Flame className="w-5 h-5 fill-current" /> Daily Code Sprint
-        </motion.button>
+        
+        <div className="flex items-center gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleRefresh}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate("/progress")}
+            className="px-6 py-3 rounded-xl font-bold text-white flex items-center gap-2 shadow-lg shadow-[#00d4aa]/20"
+            style={{ background: "linear-gradient(135deg, #00d4aa 0%, #00b4d8 100%)" }}
+          >
+            <Flame className="w-5 h-5" /> Start Practice
+          </motion.button>
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-lg hover:bg-white/10 transition-all"
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
       </motion.div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Components Built" value={42} change="+5 this week" changeType="positive" icon={Layout} delay={0.1} />
-        <StatCard title="Streak" value="15 days" change="On fire!" changeType="positive" icon={TrendingUp} delay={0.15} />
-        <StatCard title="Performance Score" value="98%" change="Optimization peak" changeType="positive" icon={Cpu} delay={0.2} />
-        <StatCard title="UI Contributions" value={120} change="Global impact" changeType="neutral" icon={Palette} delay={0.25} />
+        <StatCard 
+          title="Tests Taken" 
+          value={stats?.testsTaken || 0} 
+          change={stats?.testsTaken > 0 ? `+${Math.floor(stats.testsTaken/2)} this week` : "Start your first test!"}
+          changeType="positive"
+          icon={BarChart3}
+          iconColor="text-blue-500"
+          delay={0.1}
+        />
+        <StatCard 
+          title="Average Score" 
+          value={`${stats?.averageScore || 0}%`} 
+          change={stats?.averageScore > 70 ? "Excellent!" : stats?.averageScore > 50 ? "Good!" : "Room to improve"}
+          changeType={stats?.averageScore > 70 ? "positive" : "neutral"}
+          icon={TrendingUp}
+          iconColor={stats?.averageScore > 70 ? "text-green-500" : "text-yellow-500"}
+          delay={0.15}
+        />
+        <StatCard 
+          title="Current Streak" 
+          value={`${stats?.currentStreak || 0} days`} 
+          change={stats?.currentStreak > 7 ? "On fire! 🔥" : "Keep going!"}
+          changeType="positive"
+          icon={Flame}
+          iconColor="text-orange-500"
+          delay={0.2}
+        />
+        <StatCard 
+          title="Global Rank" 
+          value={`#${stats?.globalRank || "N/A"}`} 
+          change={stats?.percentile ? `Top ${stats.percentile}%` : "Not ranked yet"}
+          changeType="neutral"
+          icon={Trophy}
+          iconColor="text-yellow-500"
+          delay={0.25}
+        />
       </div>
 
       {/* Main Grid */}
@@ -140,8 +604,10 @@ const Index = () => {
           {/* Preparation Tracks */}
           <div>
             <div className="flex items-center justify-between mb-4">
-               <h2 className="text-xl font-bold text-foreground">Preparation Tracks</h2>
-               <span className="text-xs font-mono text-muted-foreground bg-white/5 px-2 py-1 rounded border border-white/10">v2.0.4-stable</span>
+              <h2 className="text-xl font-bold text-foreground">Preparation Tracks</h2>
+              <span className="text-xs font-mono text-muted-foreground bg-white/5 px-2 py-1 rounded border border-white/10">
+                {platformStats?.activeToday || 0} active today
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {categories.map((cat, i) => (
@@ -150,160 +616,199 @@ const Index = () => {
             </div>
           </div>
 
-          {/* WOW FEATURE: Frontend Playground Card */}
-          <div className="relative overflow-hidden group glass rounded-3xl p-8 border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-               <Monitor className="w-32 h-32" />
-            </div>
-            <div className="relative z-10">
-              <span className="bg-primary/20 text-primary text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-primary/30">New Playground</span>
-              <h2 className="text-2xl font-black mt-4 mb-2 italic">Live UI Sandbox</h2>
-              <p className="text-muted-foreground max-w-md text-sm leading-relaxed mb-6">
-                Practice building complex UI components with real-time feedback. Test your Tailwind skills and DOM manipulation.
-              </p>
-              <div className="flex gap-4">
-                <button onClick={() => navigate("/aptitude")} className="px-5 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center gap-2 hover:brightness-110 transition-all shadow-md shadow-primary/30">
-                  Launch Editor <ArrowRight className="w-4 h-4" />
-                </button>
-                <div className="flex -space-x-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-bold">U{i}</div>
-                  ))}
-                  <div className="w-8 h-8 rounded-full border-2 border-background bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">+12</div>
-                </div>
-              </div>
+          {/* Category Performance */}
+          <div className="glass rounded-3xl p-6">
+            <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-[#00d4aa]" /> Category Performance
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {(categoryPerformance || []).map((category, index) => (
+                <motion.div
+                  key={category.name || index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                  className="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold">{category.name}</span>
+                    <span className="text-sm font-bold text-[#00d4aa]">{category.accuracy}%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>{category.questionsAttempted} questions</span>
+                    <span>{category.correctAnswers} correct</span>
+                  </div>
+                  <div className="mt-2 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${category.accuracy}%` }}
+                      transition={{ duration: 1, delay: 0.2 * index }}
+                      className="h-full bg-gradient-to-r from-[#00d4aa] to-[#00b4d8] rounded-full"
+                    />
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </div>
 
-          {/* Fixed Typo: changed opicProgress to topicProgress */}
+          {/* Topic Progress */}
           <TopicProgress topics={topicProgress} />
         </div>
 
         {/* Right Column */}
         <div className="space-y-6">
           
-          {/* Tech Stack Health Monitor */}
-          <div className="glass rounded-2xl p-6 border border-white/5">
+          {/* Skill Levels */}
+          <div className="glass rounded-2xl p-6">
             <h3 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
-              <Cpu className="w-5 h-5 text-primary" /> Skill Proficiency
+              <Cpu className="w-5 h-5 text-[#00d4aa]" /> Skill Levels
             </h3>
             <div className="space-y-5">
-              {techStack.map((skill) => (
-                <div key={skill.name}>
-                  <div className="flex justify-between text-xs font-bold uppercase tracking-tight mb-2">
-                    <span>{skill.name}</span>
-                    <span className="text-primary">{skill.level}%</span>
+              {(skillLevels || []).map((skill, index) => (
+                <div key={skill.skill || index}>
+                  <div className="flex justify-between text-sm font-medium mb-2">
+                    <span>{skill.skill}</span>
+                    <span className="text-[#00d4aa]">Level {skill.level}</span>
                   </div>
-                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                    <motion.div 
+                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${skill.level}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      className={`h-full ${skill.color} shadow-[0_0_10px_rgba(0,0,0,0.5)]`}
+                      animate={{ width: `${skill.progress}%` }}
+                      transition={{ duration: 1, delay: 0.1 * index }}
+                      className="h-full bg-gradient-to-r from-[#00d4aa] to-[#00b4d8]"
                     />
                   </div>
+                  <p className="text-xs text-gray-400 mt-1">{skill.nextMilestone}</p>
                 </div>
               ))}
             </div>
-            <button className="w-full mt-8 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold uppercase tracking-widest border border-white/10 transition-all">
-              Update Skill Map
-            </button>
           </div>
 
-          {/* Overall Progress Circle */}
-          <div className="glass rounded-2xl p-6 flex flex-col items-center bg-gradient-to-b from-white/5 to-transparent">
+          {/* Overall Progress */}
+          <div className="glass rounded-2xl p-6 flex flex-col items-center">
             <h3 className="text-lg font-bold text-foreground mb-4">Mastery Progress</h3>
-            <ProgressRing progress={68} label="Complete" />
+            <ProgressRing progress={stats?.consistencyScore || 0} label="Consistency" />
             <div className="grid grid-cols-2 w-full gap-4 mt-6">
-               <div className="text-center p-3 rounded-xl bg-white/5 border border-white/5">
-                  <p className="text-[10px] uppercase font-black text-muted-foreground">Solved</p>
-                  <p className="text-lg font-bold">120</p>
-               </div>
-               <div className="text-center p-3 rounded-xl bg-white/5 border border-white/5">
-                  <p className="text-[10px] uppercase font-black text-muted-foreground">To Go</p>
-                  <p className="text-lg font-bold">380</p>
-               </div>
+              <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-[10px] uppercase font-black text-gray-400">Solved</p>
+                <p className="text-lg font-bold text-[#00d4aa]">{stats?.questionsSolved || 0}</p>
+              </div>
+              <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-[10px] uppercase font-black text-gray-400">Accuracy</p>
+                <p className="text-lg font-bold text-green-400">{stats?.averageScore || 0}%</p>
+              </div>
             </div>
           </div>
 
-          <UpcomingEvents />
+          {/* Recent Activity */}
+          <RecentActivity activities={recentActivities} />
+
+          {/* Upcoming Events */}
+          <UpcomingEvents events={upcomingEvents} />
         </div>
       </div>
 
-      {/* WOW FEATURE: Interactive Bottom Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
-          {/* Card 1: Study Material (Mapped to /study-material) */}
-          <motion.div 
-            whileHover={{ y: -5 }}
-            onClick={() => navigate("/study-material")}
-            className="p-8 rounded-3xl bg-[#00d4aa]/10 border border-[#00d4aa]/20 flex flex-col justify-between group cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-[#00d4aa]/20 flex items-center justify-center mb-6 text-[#00d4aa]">
-              <BookOpen className="w-6 h-6" />
+      {/* Platform Stats & Leaderboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        {/* Platform Stats */}
+        <div className="glass rounded-3xl p-6">
+          <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+            <Users className="w-5 h-5 text-[#00d4aa]" /> Platform Statistics
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl bg-white/5">
+              <p className="text-sm text-gray-400">Total Users</p>
+              <p className="text-2xl font-bold">{platformStats?.totalUsers?.toLocaleString() || "0"}</p>
             </div>
-            <div>
-                <h4 className="font-black text-xl mb-2 italic">Cheat Sheets</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-6">Hand-picked revision notes for React, System Design, and CSS Architecture.</p>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-[#00d4aa] tracking-widest group-hover:gap-3 transition-all">
-                  Access Library <ExternalLink className="w-3 h-3" />
-                </div>
+            <div className="p-4 rounded-xl bg-white/5">
+              <p className="text-sm text-gray-400">Tests Taken</p>
+              <p className="text-2xl font-bold">{platformStats?.totalTests?.toLocaleString() || "0"}</p>
             </div>
-          </motion.div>
+            <div className="p-4 rounded-xl bg-white/5">
+              <p className="text-sm text-gray-400">Active Today</p>
+              <p className="text-2xl font-bold">{platformStats?.activeToday?.toLocaleString() || "0"}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-white/5">
+              <p className="text-sm text-gray-400">Questions Solved</p>
+              <p className="text-2xl font-bold">{platformStats?.questionsSolved?.toLocaleString() || "0"}</p>
+            </div>
+          </div>
+        </div>
 
-          {/* Card 2: Mentorship (Mapped to /mentorship) */}
-          <motion.div 
-            whileHover={{ y: -5 }}
-            onClick={() => navigate("/mentorship")}
-            className="p-8 rounded-3xl bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 flex flex-col justify-between group cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-[#8b5cf6]/20 flex items-center justify-center mb-6 text-[#8b5cf6]">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-                <h4 className="font-black text-xl mb-2 italic">Mock Sessions</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-6">Simulate real technical interviews with Senior Frontend Engineers.</p>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-[#8b5cf6] tracking-widest group-hover:gap-3 transition-all">
-                  Book A Slot <ExternalLink className="w-3 h-3" />
+        {/* Quick Leaderboard */}
+        <div className="glass rounded-3xl p-6">
+          <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-yellow-500" /> Top Performers
+          </h3>
+          {(leaderboard?.rankings || []).slice(0, 5).map((user, index) => (
+            <div key={user.userId || index} className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition-all">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  index === 0 ? 'bg-yellow-500/20 text-yellow-500' :
+                  index === 1 ? 'bg-gray-400/20 text-gray-400' :
+                  index === 2 ? 'bg-orange-500/20 text-orange-500' :
+                  'bg-blue-500/20 text-blue-500'
+                }`}>
+                  {index < 3 ? ['🥇', '🥈', '🥉'][index] : `#${index + 1}`}
                 </div>
-            </div>
-          </motion.div>
-
-          {/* Card 3: Resume Builder (Mapped to /resume) */}
-          <motion.div 
-            whileHover={{ y: -5 }}
-            onClick={() => navigate("/resume")}
-            className="p-8 rounded-3xl bg-[#ec4899]/10 border border-[#ec4899]/20 flex flex-col justify-between group cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-[#ec4899]/20 flex items-center justify-center mb-6 text-[#ec4899]">
-              <Award className="w-6 h-6" />
-            </div>
-            <div>
-                <h4 className="font-black text-xl mb-2 italic">Portfoli-Gen</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-6">Convert your progress into a high-converting developer resume.</p>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-[#ec4899] tracking-widest group-hover:gap-3 transition-all">
-                  Generate PDF <ExternalLink className="w-3 h-3" />
+                <div>
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-xs text-gray-400">{user.stats?.testsTaken || 0} tests</p>
                 </div>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-[#00d4aa]">{user.score}</p>
+                <p className="text-xs text-gray-400">{user.stats?.averageScore || 0}% avg</p>
+              </div>
             </div>
-          </motion.div>
-
-          {/* Card 4: Progress Tracker */}
-          <motion.div 
-            whileHover={{ y: -5 }}
-            onClick={() => navigate("/progress")}
-            className="p-8 rounded-3xl bg-[#00b4d8]/10 border border-[#00b4d8]/20 flex flex-col justify-between group cursor-pointer"
+          ))}
+          <button
+            onClick={() => navigate('/leaderboard')}
+            className="w-full mt-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-medium transition-all"
           >
-            <div className="w-12 h-12 rounded-2xl bg-[#00b4d8]/20 flex items-center justify-center mb-6 text-[#00b4d8]">
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-                <h4 className="font-black text-xl mb-2 italic">My Progress</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-6">Track achievements, earn badges, and level up your coding skills.</p>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-[#00b4d8] tracking-widest group-hover:gap-3 transition-all">
-                  View Dashboard <ExternalLink className="w-3 h-3" />
-                </div>
-            </div>
-          </motion.div>
+            View Full Leaderboard →
+          </button>
+        </div>
       </div>
+
+      {/* Recommendations */}
+      {recommendations && recommendations.length > 0 && (
+        <div className="glass rounded-3xl p-6 mt-8">
+          <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-yellow-500" /> Recommendations For You
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recommendations.slice(0, 3).map((rec, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index }}
+                className="p-4 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-[#00d4aa]/30 transition-all"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    rec.priority === 'high' ? 'bg-red-500/20 text-red-500' :
+                    rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-500' :
+                    'bg-blue-500/20 text-blue-500'
+                  }`}>
+                    {rec.priority}
+                  </span>
+                  <span className="text-xs text-gray-400">{rec.estimatedTime} min</span>
+                </div>
+                <h4 className="font-semibold mb-2">{rec.title}</h4>
+                <p className="text-sm text-gray-400 mb-4">{rec.description}</p>
+                <button
+                  onClick={() => rec.actionUrl && navigate(rec.actionUrl)}
+                  className="text-sm text-[#00d4aa] hover:text-[#00d4aa]/80 flex items-center gap-1"
+                >
+                  Take action <ArrowRight className="w-4 h-4" />
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
