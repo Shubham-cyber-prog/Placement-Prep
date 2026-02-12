@@ -1,3 +1,4 @@
+// routes/group.routes.js
 import express from "express";
 import {
   createGroup,
@@ -25,48 +26,7 @@ router.use(protect);
 // Group CRUD operations
 router.post("/", createGroup);
 router.get("/", getGroups);
-// backend/routes/groupRoutes.js or similar
-router.get('/:id', protect, async (req, res) => {
-  try {
-    const groupId = req.params.id;
-    
-    // Find the group WITHOUT populating 'problems'
-    const group = await Group.findById(groupId)
-      .populate('creator', 'name email') // Only populate creator
-      .populate('members', 'name email') // Only populate members
-      // REMOVE THIS LINE: .populate('problems')
-      .lean();
-    
-    if (!group) {
-      return res.status(404).json({
-        success: false,
-        message: 'Group not found'
-      });
-    }
-    
-    // Check if user is member
-    const userId = req.user.id;
-    const isMember = group.members.some(
-      member => member._id.toString() === userId
-    );
-    
-    res.json({
-      success: true,
-      data: {
-        group,
-        isMember
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error fetching group:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch group details',
-      error: error.message
-    });
-  }
-});
+router.get("/:id", getGroupDetails);
 router.put("/:id", updateGroup);
 router.delete("/:id", deleteGroup);
 
