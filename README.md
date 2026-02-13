@@ -210,6 +210,212 @@ A structured <b>12-week roadmap</b> covering <b>DSA, System Design, and Intervie
 - **ESLint** - Tool for identifying and reporting patterns in JavaScript/TypeScript
 - **Prettier** - Code formatter for consistent code style
 
+
+# 🚀 Full Project Setup Guide (For New Contributors)
+
+Welcome 👋
+Follow these steps carefully to set up the project locally.
+
+---
+
+# 🖥️ System Requirements
+
+Make sure you have installed:
+
+* Node.js (v18 or higher recommended)
+* npm (comes with Node)
+* Git
+* MongoDB Atlas account
+* VS Code (recommended)
+
+Check versions:
+
+```
+node -v
+npm -v
+git --version
+```
+
+---
+
+# 📦 Project Structure
+
+```
+Placement-Prep/
+   ├── frontend  (Vite + React + Firebase)
+   └── backend   (Express + MongoDB + JWT)
+```
+
+---
+
+# 🔹 Step 1: Clone Repository
+
+```
+git clone https://github.com/your-username/placement-prep.git
+cd placement-prep
+```
+
+---
+
+# 🔹 Step 2: Frontend Setup
+
+```
+cd frontend
+npm install
+```
+
+### Required Frontend Packages (Auto installed via npm install)
+
+* react
+* vite
+* firebase
+* react-router-dom
+* socket.io-client
+* tailwindcss
+* framer-motion
+* react-hook-form
+* zod
+* recharts
+* etc.
+
+### Create `.env` file in frontend folder:
+
+```
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
+⚠️ All frontend env variables must start with `VITE_`
+
+### Run frontend:
+
+```
+npm run dev
+```
+
+Frontend runs on:
+
+```
+http://localhost:5173
+```
+
+---
+
+# 🔹 Step 3: Backend Setup
+
+Open new terminal:
+
+```
+cd backend
+npm install
+```
+
+### Required Backend Packages (Auto installed)
+
+* express
+* mongoose
+* dotenv
+* cors
+* bcryptjs
+* jsonwebtoken
+* helmet
+* morgan
+* socket.io
+* express-validator
+* compression
+
+---
+
+### Create `.env` file in backend folder:
+
+```
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/placementprep
+PORT=5000
+JWT_SECRET=your_secret_key
+```
+
+⚠️ Replace username and password with your MongoDB Atlas credentials.
+
+---
+
+# 🔹 Step 4: Run Backend
+
+```
+npm start
+```
+
+Backend runs on:
+
+```
+http://localhost:5000
+```
+
+---
+
+# 🔹 Step 5: MongoDB Setup
+
+1. Go to MongoDB Atlas
+2. Create cluster
+3. Create database user
+4. Whitelist your IP (0.0.0.0/0 for development)
+5. Copy connection string
+
+---
+
+# 🔹 Step 6: Important Rules
+
+* Never push `.env` file
+* Never commit API keys
+* Always create a new branch before contributing
+* Follow project folder structure
+
+---
+
+# 🔹 Common Errors & Fix
+
+### ❌ MONGODB_URI undefined
+
+Check backend `.env` variable name
+
+### ❌ Firebase not working
+
+Check frontend `.env` and restart server
+
+### ❌ Port already in use
+
+Kill process:
+
+```
+sudo kill -9 $(lsof -t -i:5000)
+```
+
+---
+
+# 🎯 Final Run (Both Servers)
+
+Terminal 1:
+
+```
+cd frontend
+npm run dev
+```
+
+Terminal 2:
+
+```
+cd backend
+npm start
+```
+
+---
+
+# 🚀 You're Ready to Contribute!
+
+
 ## 🤝 Contribution Guide
 
 We welcome contributions! 🚀 Here’s how you can help:
