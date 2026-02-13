@@ -113,14 +113,13 @@ export const getGroups = async (req, res) => {
 
 // Get group details
 // In your backend group.controller.js - getGroupDetails function
+// controllers/group.controller.js - Fix getGroupDetails
 export const getGroupDetails = async (req, res) => {
   try {
     const group = await Group.findById(req.params.id)
       .populate('creator', 'name email avatar bio')
       .populate('members', 'name email avatar bio')
-      // REMOVE THIS LINE if it exists:
-      // .populate('problems', 'title difficulty tags')
-      .lean(); // Add lean() for better performance
+      .lean();
     
     if (!group) {
       return res.status(404).json({

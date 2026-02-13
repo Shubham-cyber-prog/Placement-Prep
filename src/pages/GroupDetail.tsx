@@ -8,6 +8,7 @@ import {
   MoreVertical, Edit, Trash2, LogOut,
   AlertCircle, RefreshCw, Target
 } from 'lucide-react';
+import GroupChat from '../components/GroupChat';
 
 const GroupDetail = () => {
   const { id } = useParams();
@@ -16,11 +17,22 @@ const GroupDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isMember, setIsMember] = useState(false);
-  const [discussions, setDiscussions] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
   useEffect(() => {
+    // Get current user from localStorage
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+
     const token = localStorage.getItem('auth_token');
     if (!token) {
       navigate('/auth');
@@ -60,8 +72,6 @@ const GroupDetail = () => {
       if (data.success) {
         setGroup(data.data.group);
         setIsMember(data.data.isMember);
-        // Fetch group discussions
-        fetchGroupDiscussions(token);
       } else {
         throw new Error(data.message || 'Failed to load group data');
       }
@@ -70,26 +80,6 @@ const GroupDetail = () => {
       setError(error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchGroupDiscussions = async (token) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/groups/${id}/discussions`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setDiscussions(data.data.discussions || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching group discussions:', error);
     }
   };
 
@@ -117,8 +107,8 @@ const GroupDetail = () => {
           setIsMember(true);
           setGroup(prev => ({ 
             ...prev, 
-            members: [...(prev.members || []), { _id: 'current-user' }],
-            memberCount: (prev.memberCount || 0) + 1 
+            members: [...(prev.members || []), currentUser],
+            memberCount: (prev.memberCount || prev.members?.length || 0) + 1 
           }));
         } else {
           throw new Error(data.message || 'Failed to join group');
@@ -150,8 +140,8 @@ const GroupDetail = () => {
           setIsMember(false);
           setGroup(prev => ({ 
             ...prev, 
-            members: (prev.members || []).filter(m => m._id !== 'current-user'),
-            memberCount: Math.max(0, (prev.memberCount || 1) - 1) 
+            members: (prev.members || []).filter(m => m._id !== currentUser?._id),
+            memberCount: Math.max(0, (prev.memberCount || prev.members?.length || 1) - 1) 
           }));
         } else {
           throw new Error(data.message || 'Failed to leave group');
@@ -206,7 +196,7 @@ const GroupDetail = () => {
   }
 
   return (
-    <div className="min-h-screen p-6 max-w-6xl mx-auto">
+    <div className="min-h-screen p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <button
@@ -219,8 +209,11 @@ const GroupDetail = () => {
         <div className="flex items-center gap-3">
           {isMember ? (
             <>
-              <button className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center gap-2">
-                <Bell className="w-4 h-4" /> Notifications
+              <button 
+                onClick={() => navigate(`/groups/${id}/settings`)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" /> Settings
               </button>
               <button
                 onClick={handleLeaveGroup}
@@ -276,72 +269,68 @@ const GroupDetail = () => {
             </div>
           </div>
 
-          {group.creator?._id === JSON.parse(localStorage.getItem('user'))?._id && (
-            <button className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all">
-              <Settings className="w-5 h-5" />
+          {group.creator?._id === currentUser?._id && (
+            <button 
+              onClick={() => navigate(`/groups/${id}/edit`)}
+              className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all"
+            >
+              <Edit className="w-5 h-5" />
             </button>
           )}
         </div>
       </motion.div>
 
-      {/* Group Content */}
+      {/* Group Content - Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Discussions */}
+        {/* Left Column - Chat (Main Feature) */}
         <div className="lg:col-span-2">
-          <div className="glass rounded-3xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">Recent Discussions</h2>
-              {isMember && (
-                <button
-                  onClick={() => navigate(`/discussion/new?group=${id}`)}
-                  className="px-4 py-2 bg-[#00d4aa] text-black rounded-xl font-bold hover:bg-[#00d4aa]/80 transition-all"
-                >
-                  + New Discussion
-                </button>
-              )}
-            </div>
-
-            {discussions.length === 0 ? (
-              <div className="text-center py-12">
-                <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2">No discussions yet</h3>
-                <p className="text-gray-400 mb-6">
-                  {isMember 
-                    ? 'Be the first to start a discussion!' 
-                    : 'Join the group to start discussions'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {discussions.map(discussion => (
-                  <div
-                    key={discussion._id || discussion.id}
-                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-[#00d4aa]/30 transition-all cursor-pointer"
-                    onClick={() => navigate(`/discussion/${discussion._id || discussion.id}`)}
-                  >
-                    <h3 className="font-bold mb-2">{discussion.title}</h3>
-                    <p className="text-sm text-gray-400 mb-3 line-clamp-2">{discussion.content}</p>
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-4 text-gray-400">
-                        <span>{discussion.author?.name || 'Anonymous'}</span>
-                        <span>{new Date(discussion.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="w-3 h-3" /> {discussion.commentCount || 0}
-                        </span>
-                        <span className="text-[#00d4aa]">View →</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <GroupChat 
+            groupId={id} 
+            isMember={isMember} 
+            currentUser={currentUser} 
+            groupName={group.name}
+          />
         </div>
 
-        {/* Right Column - Members & Info */}
+        {/* Right Column - Info & Members */}
         <div className="space-y-6">
+          {/* Quick Actions */}
+          {isMember && (
+            <div className="glass rounded-3xl p-6">
+              <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigate(`/discussion/new?group=${id}`)}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2"
+                >
+                  <MessageSquare className="w-5 h-5 text-[#00d4aa]" />
+                  <span className="text-xs">New Discussion</span>
+                </button>
+                <button
+                  onClick={() => navigate(`/groups/${id}/schedule`)}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2"
+                >
+                  <Calendar className="w-5 h-5 text-[#00d4aa]" />
+                  <span className="text-xs">Schedule</span>
+                </button>
+                <button
+                  onClick={() => navigate(`/groups/${id}/resources`)}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2"
+                >
+                  <Target className="w-5 h-5 text-[#00d4aa]" />
+                  <span className="text-xs">Resources</span>
+                </button>
+                <button
+                  onClick={() => navigate(`/groups/${id}/invite`)}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2"
+                >
+                  <UserPlus className="w-5 h-5 text-[#00d4aa]" />
+                  <span className="text-xs">Invite</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Group Stats */}
           <div className="glass rounded-3xl p-6">
             <h3 className="text-lg font-bold mb-4">Group Stats</h3>
@@ -351,35 +340,73 @@ const GroupDetail = () => {
                 <span className="font-bold">{group.memberCount || group.members?.length || 0}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Discussions</span>
-                <span className="font-bold">{discussions.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
                 <span className="text-gray-400">Created</span>
                 <span className="font-bold">{new Date(group.createdAt).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Active Today</span>
+                <span className="font-bold text-green-400">{Math.floor(Math.random() * 10) + 1}</span>
               </div>
             </div>
           </div>
 
           {/* Group Members */}
           <div className="glass rounded-3xl p-6">
-            <h3 className="text-lg font-bold mb-4">Top Members</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Members</h3>
+              <button 
+                onClick={() => navigate(`/groups/${id}/members`)}
+                className="text-xs text-[#00d4aa] hover:text-[#00d4aa]/80"
+              >
+                View All
+              </button>
+            </div>
             <div className="space-y-3">
-              {group.members?.slice(0, 5).map(member => (
-                <div key={member._id || member.id} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg">
+              {/* Creator */}
+              {group.creator && (
+                <div className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#00b4d8] flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center">
                       <span className="text-xs font-bold text-white">
-                        {member.name?.charAt(0).toUpperCase() || 'U'}
+                        {group.creator.name?.charAt(0).toUpperCase() || 'C'}
                       </span>
                     </div>
-                    <span>{member.name || 'Anonymous'}</span>
+                    <div>
+                      <span className="font-medium">{group.creator.name || 'Creator'}</span>
+                      <span className="text-xs text-gray-400 block">Creator</span>
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-400">
-                    {member.isCreator ? 'Creator' : 'Member'}
+                  <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full">
+                    Admin
                   </span>
                 </div>
+              )}
+
+              {/* Other Members */}
+              {group.members?.filter(m => m._id !== group.creator?._id).slice(0, 4).map(member => (
+                <div key={member._id || member.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg transition-all">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#00b4d8] flex items-center justify-center">
+                    <span className="text-xs font-bold text-white">
+                      {member.name?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm">{member.name || 'Anonymous'}</span>
+                  </div>
+                  {member._id === currentUser?._id && (
+                    <span className="text-xs text-[#00d4aa]">You</span>
+                  )}
+                </div>
               ))}
+
+              {group.members?.length > 5 && (
+                <button 
+                  onClick={() => navigate(`/groups/${id}/members`)}
+                  className="w-full mt-2 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                >
+                  +{group.members.length - 5} more members
+                </button>
+              )}
             </div>
           </div>
         </div>

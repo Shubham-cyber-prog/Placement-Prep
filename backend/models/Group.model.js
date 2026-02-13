@@ -1,3 +1,4 @@
+// models/Group.model.js
 import mongoose from "mongoose";
 
 const groupSchema = new mongoose.Schema({
@@ -62,6 +63,10 @@ const groupSchema = new mongoose.Schema({
             default: 0
         },
         sessionsCompleted: {
+            type: Number,
+            default: 0
+        },
+        totalMessages: {
             type: Number,
             default: 0
         }
