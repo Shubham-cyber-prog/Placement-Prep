@@ -16,6 +16,7 @@ import ProblemDetail from "./pages/ProblemDetail";
 import MyProgress from "./pages/MyProgress";
 import Companies from "./pages/Companies";
 import PersonalizedPath from "./pages/PersonalizedPath";
+import Leaderboard from "./pages/Leaderboard";
 import StudyMaterial from "./pages/StudyMaterial";
 import SystemDesign from "./pages/SystemDesign";
 import ComingSoon from "./pages/ComingSoon";
@@ -57,6 +58,7 @@ const App = () => {
               <Route path="/my-progress" element={<MyProgress />} />
               <Route path="/mentorship" element={<Mentorship />} />
               <Route path="/personalized-path" element={<PersonalizedPath />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/mock-test" element={<MockTest />} />
               <Route path="/interview-prep" element={<InterviewPreparationPlatform />} />
               <Route path="/mock-interview" element={<MockInterview />} />
