@@ -12,7 +12,9 @@ import rankingRoutes from "./routes/ranking.routes.js";
 import achievementRoutes from "./routes/achievement.routes.js";
 import groupRoutes from "./routes/group.routes.js";
 import discussionRoutes from "./routes/discussion.routes.js";
+import scheduleRoutes from "./routes/schedule.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
+
 import questionsRoutes from "./routes/questions.routes.js";
 import mocktestsRoutes from "./routes/mocktests.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
@@ -69,7 +71,9 @@ app.use("/api/problems", problemRoutes);
 app.use("/api/rankings", rankingRoutes);
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/schedules", scheduleRoutes);
 app.use("/api/sessions", sessionRoutes);
+
 app.use("/api/questions", questionsRoutes);
 app.use("/api/mock-tests", mocktestsRoutes);
 
