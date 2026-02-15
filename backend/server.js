@@ -20,6 +20,7 @@ import discussionRoutes from "./routes/discussion.routes.js"; // Add this import
 import achievementRoutes from "./routes/achievement.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import recommendationRoutes from "./routes/recommendation.routes.js";
+import leaderboardRoutes from "./routes/leaderboard.routes.js";
 
 // Import models to initialize them
 import "./models/Group.model.js";
@@ -87,6 +88,7 @@ app.use("/api/discussions", discussionRoutes); // Add this line
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
 
 
 // Welcome route
